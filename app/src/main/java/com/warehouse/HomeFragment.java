@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.ConnectivityManager;
@@ -23,6 +24,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.core.widget.ImageViewCompat;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -113,10 +115,12 @@ public class HomeFragment extends Fragment {
         }
         if (adminIconView != null) {
             adminIconView.setImageResource(R.drawable.administrator);
+            ImageViewCompat.setImageTintList(adminIconView, ColorStateList.valueOf(AdminUi.ACCENT));
             adminIconView.setOnClickListener(v -> openAdminPage());
         }
         if (wifiIconView != null) {
             wifiIconView.setImageResource(R.drawable.wifi);
+            ImageViewCompat.setImageTintList(wifiIconView, ColorStateList.valueOf(AdminUi.ACCENT));
         }
     }
 
@@ -429,7 +433,10 @@ public class HomeFragment extends Fragment {
 
         private TextView createSupplyModeButton(Context context, String text) {
             TextView button = AdminUi.text(context, text, 12, AdminUi.ACCENT, Typeface.BOLD);
-            button.setBackgroundResource(R.drawable.humidity_switch_off_bg);
+            button.setBackgroundResource("自动".equals(text)
+                    ? R.drawable.humidity_switch_on_bg
+                    : R.drawable.humidity_switch_off_bg);
+            button.setTextColor("自动".equals(text) ? AdminUi.PAGE_BG : AdminUi.ACCENT);
             button.setClickable(true);
             button.setFocusable(true);
             return button;
@@ -487,8 +494,12 @@ public class HomeFragment extends Fragment {
 
         private void refreshSupplyButtons() {
             if (supplyModeButton != null) {
-                supplyModeButton.setText(getSupplyModeText());
-                supplyModeButton.setTextColor(AdminUi.ACCENT);
+                String text = getSupplyModeText();
+                supplyModeButton.setText(text);
+                supplyModeButton.setBackgroundResource("自动".equals(text)
+                        ? R.drawable.humidity_switch_on_bg
+                        : R.drawable.humidity_switch_off_bg);
+                supplyModeButton.setTextColor("自动".equals(text) ? AdminUi.PAGE_BG : AdminUi.ACCENT);
             }
         }
 
@@ -541,16 +552,16 @@ public class HomeFragment extends Fragment {
             table.setClipChildren(false);
 
             table.addView(buildTableRow(context, true, "新风", "", "", "送风", "", ""),
-                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 72)));
+                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 58)));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
             table.addView(buildTableRow(context, false, "温度", "0.0", "℃", "温度", "0.0", "℃"),
-                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 56)));
+                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
             table.addView(buildTableRow(context, false, "湿度", "0.0", "%", "湿度", "0.0", "%"),
-                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 56)));
+                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
             table.addView(buildTableRow(context, false, "含湿量", "0.00", "g/kg", "含湿量", "0.00", "g/kg"),
-                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 56)));
+                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
             return table;
         }
 
@@ -578,7 +589,7 @@ public class HomeFragment extends Fragment {
             cell.setPadding(AdminUi.dp(context, 12), 0, AdminUi.dp(context, 12), 0);
 
             if (headerRow) {
-                TextView header = AdminUi.text(context, labelText, 20, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+                TextView header = AdminUi.text(context, labelText, 18, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
                 header.setGravity(Gravity.CENTER);
                 cell.addView(header, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                 return cell;
@@ -588,14 +599,14 @@ public class HomeFragment extends Fragment {
             content.setGravity(Gravity.CENTER_VERTICAL);
             cell.addView(content, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-            TextView label = AdminUi.text(context, labelText, 15, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+            TextView label = AdminUi.text(context, labelText, 13, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
             label.setGravity(Gravity.CENTER_VERTICAL);
             content.addView(label, AdminUi.weightedLp(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
-            TextView value = AdminUi.text(context, valueText, 18, AdminUi.ACCENT, Typeface.BOLD);
+            TextView value = AdminUi.text(context, valueText, 22, AdminUi.ACCENT, Typeface.BOLD);
             content.addView(value, AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-            TextView unit = AdminUi.text(context, unitText, 13, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
+            TextView unit = AdminUi.text(context, unitText, 11, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
             LinearLayout.LayoutParams unitParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             unitParams.leftMargin = AdminUi.dp(context, 8);
             content.addView(unit, unitParams);
@@ -610,32 +621,34 @@ public class HomeFragment extends Fragment {
 
         private LinearLayout buildSettingSummaryModule(Context context) {
             LinearLayout module = AdminUi.column(context);
-            module.setPadding(AdminUi.dp(context, 12), AdminUi.dp(context, 10), AdminUi.dp(context, 12), AdminUi.dp(context, 10));
+            module.setPadding(AdminUi.dp(context, 14), AdminUi.dp(context, 10), AdminUi.dp(context, 14), AdminUi.dp(context, 10));
             module.setBackground(context.getDrawable(R.drawable.smart_mode_disabled_bg));
+            module.setMinimumHeight(AdminUi.dp(context, 108));
+            module.setGravity(Gravity.CENTER_VERTICAL);
 
             LinearLayout row = AdminUi.row(context);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            module.addView(row, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            module.addView(row, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 60)));
 
             SummaryItem temperatureItem = buildSummaryItem(context, "温度设定", "℃");
             temperatureValueView = temperatureItem.valueView;
-            row.addView(temperatureItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            row.addView(temperatureItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
             View divider1 = new View(context);
             divider1.setBackgroundColor(Color.rgb(42, 138, 155));
-            row.addView(divider1, AdminUi.lp(AdminUi.dp(context, 1), AdminUi.dp(context, 42)));
+            row.addView(divider1, AdminUi.lp(AdminUi.dp(context, 1), ViewGroup.LayoutParams.MATCH_PARENT));
 
             SummaryItem humidityItem = buildSummaryItem(context, "湿度设定", "%");
             humidityValueView = humidityItem.valueView;
-            row.addView(humidityItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            row.addView(humidityItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
             View divider2 = new View(context);
             divider2.setBackgroundColor(Color.rgb(42, 138, 155));
-            row.addView(divider2, AdminUi.lp(AdminUi.dp(context, 1), AdminUi.dp(context, 42)));
+            row.addView(divider2, AdminUi.lp(AdminUi.dp(context, 1), ViewGroup.LayoutParams.MATCH_PARENT));
 
             SummaryItem supplyItem = buildSummaryItem(context, "送风量", "%");
             supplyValueView = supplyItem.valueView;
-            row.addView(supplyItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            row.addView(supplyItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
             return module;
         }
 
@@ -645,7 +658,7 @@ public class HomeFragment extends Fragment {
             item.setClickable(true);
             item.setFocusable(true);
 
-            TextView label = AdminUi.text(context, labelText, 14, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+            TextView label = AdminUi.text(context, labelText, 16, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
             item.addView(label, AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
             LinearLayout valueRow = AdminUi.row(context);
@@ -654,10 +667,10 @@ public class HomeFragment extends Fragment {
             valueRowParams.topMargin = AdminUi.dp(context, 4);
             item.addView(valueRow, valueRowParams);
 
-            TextView value = AdminUi.text(context, "", 18, AdminUi.ACCENT, Typeface.BOLD);
+            TextView value = AdminUi.text(context, "", 22, AdminUi.ACCENT, Typeface.BOLD);
             valueRow.addView(value, AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-            TextView unit = AdminUi.text(context, unitText, 12, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
+            TextView unit = AdminUi.text(context, unitText, 13, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
             LinearLayout.LayoutParams unitParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             unitParams.leftMargin = AdminUi.dp(context, 4);
             valueRow.addView(unit, unitParams);
