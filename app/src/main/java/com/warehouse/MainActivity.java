@@ -15,7 +15,7 @@ public class MainActivity extends AppCompatActivity {
         hideSystemBars();
         getSupportFragmentManager()
                 .beginTransaction()
-                .replace(android.R.id.content, new NewHomeTestFragment())
+                .replace(android.R.id.content, new HomeFragment())
                 .commit();
     }
 

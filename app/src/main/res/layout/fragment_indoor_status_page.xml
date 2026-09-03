@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/indoor_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingTop="6dp">
+
+    <LinearLayout
+        android:id="@+id/indoor_card"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="14dp"
+        android:background="#093950">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp">
+
+            <FrameLayout
+                android:id="@+id/btn_auto_mode"
+                android:layout_width="72dp"
+                android:layout_height="28dp"
+                android:layout_gravity="start|center_vertical"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/humidity_switch_off_bg"
+                android:foreground="?android:attr/selectableItemBackgroundBorderless">
+
+                <TextView
+                    android:id="@+id/btn_auto_mode_text"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:text="OFF"
+                    android:textColor="#05222D"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/switch_thumb_bg"
+                    android:layout_gravity="start|center_vertical"
+                    android:layout_marginStart="0dp"
+                    android:layout_marginLeft="0dp" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:id="@+id/mode_bar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:orientation="horizontal" />
+
+            <TextView
+                android:id="@+id/btn_auto_manual"
+                android:layout_width="72dp"
+                android:layout_height="28dp"
+                android:layout_gravity="end|center_vertical"
+                android:background="@drawable/humidity_switch_off_bg"
+                android:gravity="center"
+                android:text="自动"
+                android:textColor="#24C8D9"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/metric_grid"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical" />
+
+        <LinearLayout
+            android:id="@+id/humidity_row"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:orientation="horizontal" />
+
+        <LinearLayout
+            android:id="@+id/module_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal" />
+    </LinearLayout>
+</LinearLayout>
