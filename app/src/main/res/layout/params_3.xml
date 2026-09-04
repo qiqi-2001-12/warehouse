@@ -44,7 +44,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -94,7 +94,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -144,7 +144,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -199,7 +199,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -249,7 +249,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -299,7 +299,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -354,7 +354,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -404,7 +404,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -454,7 +454,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -509,7 +509,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="23sp"
                     android:textStyle="bold" />

@@ -34,6 +34,8 @@ import androidx.viewpager2.widget.ViewPager2;
 
 public class HomeFragment extends Fragment {
     private static final float PANEL_SCALE = 1.25f;
+    private static final String VALUE_PLACEHOLDER = "--";
+    private static final String INPUT_HINT_PLACEHOLDER = "待绑定";
 
     private View rootView;
     private View panel;
@@ -109,13 +111,13 @@ public class HomeFragment extends Fragment {
             titleView.setTextColor(Color.rgb(36, 200, 217));
         }
         if (weatherIconView != null) {
-            weatherIconView.setText("☀");
+            weatherIconView.setText(VALUE_PLACEHOLDER);
         }
         if (outdoorTempView != null) {
-            outdoorTempView.setText("24℃");
+            outdoorTempView.setText(VALUE_PLACEHOLDER);
         }
         if (outdoorStatusView != null) {
-            outdoorStatusView.setText("室外");
+            outdoorStatusView.setText(VALUE_PLACEHOLDER);
         }
         if (adminIconView != null) {
             adminIconView.setImageResource(R.drawable.administrator);
@@ -283,10 +285,10 @@ public class HomeFragment extends Fragment {
             secondRowParams.weight = 1;
             metricGrid.addView(secondRow, secondRowParams);
 
-            addMetricCell(firstRow, context, "温度", "24", "℃", AdminUi.TEXT_PRIMARY);
-            addMetricCell(firstRow, context, "湿度", "50", "%", AdminUi.TEXT_PRIMARY);
-            addMetricCell(secondRow, context, "PM2.5", "9", "μg/m³", Color.rgb(91, 154, 255));
-            addMetricCell(secondRow, context, "CO₂", "483", "ppm", Color.rgb(245, 166, 35));
+            addMetricCell(firstRow, context, "温度", VALUE_PLACEHOLDER, "℃", AdminUi.TEXT_PRIMARY);
+            addMetricCell(firstRow, context, "湿度", VALUE_PLACEHOLDER, "%", AdminUi.TEXT_PRIMARY);
+            addMetricCell(secondRow, context, "PM2.5", VALUE_PLACEHOLDER, "μg/m³", Color.rgb(91, 154, 255));
+            addMetricCell(secondRow, context, "CO₂", VALUE_PLACEHOLDER, "ppm", Color.rgb(245, 166, 35));
         }
 
         private void buildHumidityRow(Context context, LinearLayout humidityRow) {
@@ -303,7 +305,7 @@ public class HomeFragment extends Fragment {
             TextView humidityLabel = AdminUi.text(context, "含湿量", 14, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
             humidityContent.addView(humidityLabel, AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-            TextView humidityValue = AdminUi.text(context, "0.00", 32, AdminUi.ACCENT, Typeface.BOLD);
+            TextView humidityValue = AdminUi.text(context, VALUE_PLACEHOLDER, 32, AdminUi.ACCENT, Typeface.BOLD);
             LinearLayout.LayoutParams humidityValueParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             humidityValueParams.leftMargin = AdminUi.dp(context, 10);
             humidityContent.addView(humidityValue, humidityValueParams);
@@ -521,9 +523,9 @@ public class HomeFragment extends Fragment {
         private static final String STATE_HUMIDITY_SETTING = "humidity_setting";
         private static final String STATE_SUPPLY_SETTING = "supply_setting";
 
-        private double temperatureSetting = 24.0;
-        private double humiditySetting = 50.0;
-        private int supplySetting = 100;
+        private double temperatureSetting = Double.NaN;
+        private double humiditySetting = Double.NaN;
+        private int supplySetting = -1;
         private TextView temperatureValueView;
         private TextView humidityValueView;
         private TextView supplyValueView;
@@ -581,13 +583,13 @@ public class HomeFragment extends Fragment {
             table.addView(buildTableRow(context, true, "新风", "", "", "送风", "", ""),
                     AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 58)));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
-            table.addView(buildTableRow(context, false, "温度", "0.0", "℃", "温度", "0.0", "℃"),
+            table.addView(buildTableRow(context, false, "温度", VALUE_PLACEHOLDER, "℃", "温度", VALUE_PLACEHOLDER, "℃"),
                     AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
-            table.addView(buildTableRow(context, false, "湿度", "0.0", "%", "湿度", "0.0", "%"),
+            table.addView(buildTableRow(context, false, "湿度", VALUE_PLACEHOLDER, "%", "湿度", VALUE_PLACEHOLDER, "%"),
                     AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
-            table.addView(buildTableRow(context, false, "含湿量", "0.00", "g/kg", "含湿量", "0.00", "g/kg"),
+            table.addView(buildTableRow(context, false, "含湿量", VALUE_PLACEHOLDER, "g/kg", "含湿量", VALUE_PLACEHOLDER, "g/kg"),
                     AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
             return table;
         }
@@ -731,13 +733,13 @@ public class HomeFragment extends Fragment {
 
         private void refreshSummaryValues() {
             if (temperatureValueView != null) {
-                temperatureValueView.setText(formatOneDecimal(temperatureSetting));
+                temperatureValueView.setText(Double.isNaN(temperatureSetting) ? VALUE_PLACEHOLDER : formatOneDecimal(temperatureSetting));
             }
             if (humidityValueView != null) {
-                humidityValueView.setText(formatOneDecimal(humiditySetting));
+                humidityValueView.setText(Double.isNaN(humiditySetting) ? VALUE_PLACEHOLDER : formatOneDecimal(humiditySetting));
             }
             if (supplyValueView != null) {
-                supplyValueView.setText(String.valueOf(supplySetting));
+                supplyValueView.setText(supplySetting < 0 ? VALUE_PLACEHOLDER : String.valueOf(supplySetting));
             }
         }
 
@@ -746,7 +748,10 @@ public class HomeFragment extends Fragment {
                 return;
             }
             Context context = requireContext();
-            EditText input = createInputField(context, formatOneDecimal(currentValue), InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            EditText input = createInputField(
+                    context,
+                    Double.isNaN(currentValue) ? "" : formatOneDecimal(currentValue),
+                    InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
             InputDialogParts dialogParts = buildInputDialog(
                     context,
                     percentRange ? title + " 0-100" : title,
@@ -778,7 +783,10 @@ public class HomeFragment extends Fragment {
                 return;
             }
             Context context = requireContext();
-            EditText input = createInputField(context, String.valueOf(currentValue), InputType.TYPE_CLASS_NUMBER);
+            EditText input = createInputField(
+                    context,
+                    currentValue < 0 ? "" : String.valueOf(currentValue),
+                    InputType.TYPE_CLASS_NUMBER);
             InputDialogParts dialogParts = buildInputDialog(
                     context,
                     title + " " + minValue + "-" + maxValue,
@@ -807,7 +815,7 @@ public class HomeFragment extends Fragment {
             root.setGravity(Gravity.CENTER_HORIZONTAL);
             root.setPadding(AdminUi.dp(context, 12), AdminUi.dp(context, 12), AdminUi.dp(context, 12), AdminUi.dp(context, 12));
             root.setBackground(AdminUi.bg(AdminUi.PANEL_BG, 8, AdminUi.PANEL_STROKE, 1, context));
-            input.setHint(hint);
+            input.setHint(INPUT_HINT_PLACEHOLDER);
 
             LinearLayout.LayoutParams inputParams = AdminUi.lp(AdminUi.mm(context, 44), ViewGroup.LayoutParams.WRAP_CONTENT);
             root.addView(input, inputParams);
@@ -880,14 +888,14 @@ public class HomeFragment extends Fragment {
 
             ProgressBar progressBar = new ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal);
             progressBar.setMax(100);
-            progressBar.setProgress(55);
+            progressBar.setProgress(0);
             progressBar.setProgressDrawable(context.getDrawable(R.drawable.progress_filter));
             LinearLayout.LayoutParams progressParams = AdminUi.weightedLp(0, AdminUi.dp(context, 9), 1);
             progressParams.leftMargin = AdminUi.dp(context, 8);
             progressParams.rightMargin = AdminUi.dp(context, 8);
             filterRow.addView(progressBar, progressParams);
 
-            TextView progressText = AdminUi.text(context, "55%", 13, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+            TextView progressText = AdminUi.text(context, VALUE_PLACEHOLDER, 13, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
             filterRow.addView(progressText, AdminUi.lp(AdminUi.dp(context, 34), ViewGroup.LayoutParams.WRAP_CONTENT));
             return filterRow;
         }

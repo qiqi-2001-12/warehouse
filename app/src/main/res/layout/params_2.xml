@@ -38,7 +38,7 @@
                 android:layout_width="28dp"
                 android:layout_height="28dp"
                 android:layout_marginStart="10dp"
-                android:background="@drawable/factory_status_light_red" />
+                android:background="@drawable/factory_status_light_placeholder" />
         </LinearLayout>
 
         <Space
@@ -76,7 +76,7 @@
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:layout_marginStart="10dp"
-                    android:background="@drawable/factory_status_light_red" />
+                    android:background="@drawable/factory_status_light_placeholder" />
             </LinearLayout>
 
             <LinearLayout
@@ -103,7 +103,7 @@
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:layout_marginStart="10dp"
-                    android:background="@drawable/factory_status_light_green" />
+                    android:background="@drawable/factory_status_light_placeholder" />
             </LinearLayout>
 
             <LinearLayout
@@ -130,7 +130,7 @@
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:layout_marginStart="10dp"
-                    android:background="@drawable/factory_status_light_red" />
+                    android:background="@drawable/factory_status_light_placeholder" />
             </LinearLayout>
 
             <LinearLayout
@@ -157,7 +157,7 @@
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:layout_marginStart="10dp"
-                    android:background="@drawable/factory_status_light_red" />
+                    android:background="@drawable/factory_status_light_placeholder" />
             </LinearLayout>
 
             <LinearLayout
@@ -184,7 +184,7 @@
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:layout_marginStart="10dp"
-                    android:background="@drawable/factory_status_light_green" />
+                    android:background="@drawable/factory_status_light_placeholder" />
             </LinearLayout>
 
             <LinearLayout
@@ -211,7 +211,7 @@
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:layout_marginStart="10dp"
-                    android:background="@drawable/factory_status_light_red" />
+                    android:background="@drawable/factory_status_light_placeholder" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
@@ -266,7 +266,7 @@
                         android:background="@drawable/factory_param_value_bg"
                         android:gravity="center"
                         android:includeFontPadding="false"
-                        android:text="0"
+                        android:text="--"
                         android:textColor="#191C34"
                         android:textSize="23sp"
                         android:textStyle="bold" />
@@ -306,7 +306,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="23sp"
                     android:textStyle="bold" />
@@ -335,7 +335,7 @@
                     android:background="@drawable/factory_param_value_bg"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="0"
+                    android:text="--"
                     android:textColor="#191C34"
                     android:textSize="23sp"
                     android:textStyle="bold" />
@@ -381,7 +381,7 @@
                         android:background="@drawable/factory_param_value_bg"
                         android:gravity="center"
                         android:includeFontPadding="false"
-                        android:text="0"
+                        android:text="--"
                         android:textColor="#191C34"
                         android:textSize="23sp"
                         android:textStyle="bold" />
@@ -427,7 +427,7 @@
                         android:background="@drawable/factory_param_value_bg"
                         android:gravity="center"
                         android:includeFontPadding="false"
-                        android:text="0"
+                        android:text="--"
                         android:textColor="#191C34"
                         android:textSize="23sp"
                         android:textStyle="bold" />
@@ -473,7 +473,7 @@
                         android:background="@drawable/factory_param_value_bg"
                         android:gravity="center"
                         android:includeFontPadding="false"
-                        android:text="0"
+                        android:text="--"
                         android:textColor="#191C34"
                         android:textSize="23sp"
                         android:textStyle="bold" />

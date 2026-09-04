@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -44,7 +44,7 @@
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="0.0"
+                android:text="--"
                 android:textColor="#191C34"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -92,7 +92,7 @@
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="0.0"
+                android:text="--"
                 android:textColor="#191C34"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -146,7 +146,7 @@
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="0.0"
+                android:text="--"
                 android:textColor="#191C34"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -194,7 +194,7 @@
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="0.0"
+                android:text="--"
                 android:textColor="#191C34"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -248,7 +248,7 @@
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="0.0"
+                android:text="--"
                 android:textColor="#191C34"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -296,7 +296,7 @@
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="0.0"
+                android:text="--"
                 android:textColor="#191C34"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -350,7 +350,7 @@
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="0.0"
+                android:text="--"
                 android:textColor="#191C34"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -398,7 +398,7 @@
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="0.0"
+                android:text="--"
                 android:textColor="#191C34"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -452,7 +452,7 @@
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="0.0"
+                android:text="--"
                 android:textColor="#191C34"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -500,7 +500,7 @@
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:text="0.0"
+                android:text="--"
                 android:textColor="#191C34"
                 android:textSize="22sp"
                 android:textStyle="bold" />
