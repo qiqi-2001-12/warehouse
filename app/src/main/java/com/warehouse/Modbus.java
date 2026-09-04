@@ -155,6 +155,7 @@ final class ModbusTable {
         ModbusTable.register(ModbusTable.rwInt(149, 0, 9999, "ppm"));
         ModbusTable.register(ModbusTable.rwInt(150, 0, 9999, "ppm"));
         ModbusTable.register(ModbusTable.rwInt(151, 0, 9999, "ug/m3"));
+        ModbusTable.register(ModbusTable.rwInt(152, 0, 9999, "ug/m3"));
         ModbusTable.register(ModbusTable.rwInt(158, -50, 50, "℃"));
         ModbusTable.register(ModbusTable.rwInt(153, 0, 9999, "ppm"));
         ModbusTable.register(ModbusTable.rwInt(154, 0, 9999, "ug/m3"));

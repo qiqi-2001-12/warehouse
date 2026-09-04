@@ -38,6 +38,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param1_env_temp_value"
                 android:layout_width="64dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"
@@ -86,6 +87,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param1_high_pressure_value"
                 android:layout_width="64dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"
@@ -140,6 +142,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param1_exhaust_temp_value"
                 android:layout_width="64dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"
@@ -188,6 +191,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param1_low_pressure_value"
                 android:layout_width="64dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"
@@ -242,6 +246,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param1_suction_temp_value"
                 android:layout_width="64dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"
@@ -290,6 +295,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param1_suction_superheat_value"
                 android:layout_width="64dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"
@@ -344,6 +350,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param1_evaporation_temp_value"
                 android:layout_width="64dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"
@@ -392,6 +399,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param1_exhaust_superheat_value"
                 android:layout_width="64dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"
@@ -446,6 +454,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param1_condensing_temp_value"
                 android:layout_width="64dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"
@@ -494,6 +503,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param1_outdoor_coil_temp_value"
                 android:layout_width="64dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"

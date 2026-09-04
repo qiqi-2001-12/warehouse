@@ -10,6 +10,8 @@ import android.graphics.Typeface;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -189,17 +191,28 @@ public class HomeFragment extends Fragment {
     }
 
     public static class IndoorStatusPageFragment extends Fragment {
+        private static final long POLL_INTERVAL_MS = 1000L;
+        private final Handler pollHandler = new Handler(Looper.getMainLooper());
+        private final Runnable pollRunnable = this::pollSensorValues;
         private boolean switchOn;
         private boolean humidityAutoMode = true;
         private int humidityModeIndex = 0;
         private boolean smartModeEnabled = true;
         private int supplyModeIndex = 0;
+        private boolean pollingActive;
+        private boolean pollInFlight;
+        private int pendingPollReads;
         private FrameLayout switchButton;
         private TextView switchButtonText;
         private TextView autoButton;
         private TextView humidityModeValue;
         private TextView smartModeButton;
         private TextView supplyModeButton;
+        private TextView indoorTemperatureValueView;
+        private TextView indoorHumidityValueView;
+        private TextView indoorPm25ValueView;
+        private TextView indoorCo2ValueView;
+        private TextView indoorAbsoluteHumidityValueView;
 
         private static final String[] SUPPLY_MODES = {"自动", "节能", "舒适", "强力"};
         private static final String[] HUMIDITY_MODES = {"除湿", "加湿", "通风", "低温加湿", "制热", "制冷"};
@@ -225,18 +238,18 @@ public class HomeFragment extends Fragment {
 
             if (switchButton != null) {
                 updateSwitchButton();
-                switchButton.setOnClickListener(v -> {
-                    switchOn = !switchOn;
+                switchButton.setOnClickListener(v -> writeIntValue(515, switchOn ? 0 : 1, value -> {
+                    switchOn = value == 1;
                     updateSwitchButton();
-                });
+                }));
             }
 
             if (autoButton != null) {
                 autoButton.setText("自动");
-                autoButton.setOnClickListener(v -> {
-                    humidityAutoMode = !humidityAutoMode;
+                autoButton.setOnClickListener(v -> writeIntValue(514, humidityAutoMode ? 1 : 0, value -> {
+                    humidityAutoMode = value == 0;
                     refreshHumidityModeButton();
-                });
+                }));
             }
 
             buildMetricGrid(context, metricGrid);
@@ -247,6 +260,160 @@ public class HomeFragment extends Fragment {
             refreshSmartButtons();
             refreshSupplyButtons();
             return root;
+        }
+
+        @Override
+        public void onResume() {
+            super.onResume();
+            startPolling();
+        }
+
+        @Override
+        public void onPause() {
+            stopPolling();
+            super.onPause();
+        }
+
+        @Override
+        public void onDestroyView() {
+            stopPolling();
+            switchButton = null;
+            switchButtonText = null;
+            autoButton = null;
+            humidityModeValue = null;
+            smartModeButton = null;
+            supplyModeButton = null;
+            indoorTemperatureValueView = null;
+            indoorHumidityValueView = null;
+            indoorPm25ValueView = null;
+            indoorCo2ValueView = null;
+            indoorAbsoluteHumidityValueView = null;
+            super.onDestroyView();
+        }
+
+        private void startPolling() {
+            pollingActive = true;
+            requestImmediatePoll();
+        }
+
+        private void stopPolling() {
+            pollingActive = false;
+            pollInFlight = false;
+            pendingPollReads = 0;
+            pollHandler.removeCallbacks(pollRunnable);
+        }
+
+        private void requestImmediatePoll() {
+            scheduleNextPoll(0L);
+        }
+
+        private void scheduleNextPoll(long delayMs) {
+            pollHandler.removeCallbacks(pollRunnable);
+            if (!pollingActive || !isAdded()) {
+                return;
+            }
+            pollHandler.postDelayed(pollRunnable, Math.max(0L, delayMs));
+        }
+
+        private void pollSensorValues() {
+            if (!pollingActive || !isAdded()) {
+                return;
+            }
+            if (pollInFlight) {
+                scheduleNextPoll(POLL_INTERVAL_MS);
+                return;
+            }
+            int reads = 0;
+            reads += refreshState(515, value -> {
+                switchOn = value == 1;
+                updateSwitchButton();
+            });
+            reads += refreshState(514, value -> {
+                humidityAutoMode = value == 0;
+                refreshHumidityModeButton();
+            });
+            reads += refreshState(513, value -> {
+                humidityModeIndex = clampIndex(value, HUMIDITY_MODES.length);
+                refreshHumidityModeValue();
+            });
+            reads += refreshState(100, value -> {
+                smartModeEnabled = value == 1;
+                refreshSmartButtons();
+            });
+            reads += refreshState(159, value -> {
+                supplyModeIndex = clampIndex(value, SUPPLY_MODES.length);
+                refreshSupplyButtons();
+            });
+            reads += refreshValue(indoorTemperatureValueView, 863);
+            reads += refreshValue(indoorHumidityValueView, 864);
+            reads += refreshValue(indoorPm25ValueView, 860);
+            reads += refreshValue(indoorCo2ValueView, 861);
+            reads += refreshValue(indoorAbsoluteHumidityValueView, 865);
+            if (reads <= 0) {
+                scheduleNextPoll(POLL_INTERVAL_MS);
+                return;
+            }
+            pollInFlight = true;
+            pendingPollReads = reads;
+        }
+
+        private int refreshState(int address, IntValueConsumer consumer) {
+            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
+            if (spec == null || !spec.canRead()) {
+                return 0;
+            }
+            ModbusManager.get(requireContext()).read(spec, new ModbusManager.IntCallback() {
+                @Override
+                public void onSuccess(int value) {
+                    consumer.accept(value);
+                    onPollReadFinished();
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    onPollReadFinished();
+                }
+            });
+            return 1;
+        }
+
+        private int refreshValue(TextView view, int address) {
+            if (view == null) {
+                return 0;
+            }
+            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
+            if (spec == null || !spec.canRead()) {
+                view.setText(VALUE_PLACEHOLDER);
+                return 0;
+            }
+            ModbusManager.get(view.getContext()).read(spec, new ModbusManager.IntCallback() {
+                @Override
+                public void onSuccess(int value) {
+                    view.setTag(value);
+                    view.setText(ModbusUi.formatDefault(spec, value));
+                    onPollReadFinished();
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    view.setText(VALUE_PLACEHOLDER);
+                    onPollReadFinished();
+                }
+            });
+            return 1;
+        }
+
+        private void onPollReadFinished() {
+            if (pendingPollReads > 0) {
+                pendingPollReads--;
+            }
+            if (pendingPollReads > 0) {
+                return;
+            }
+            pollInFlight = false;
+            if (pollingActive) {
+                scheduleNextPoll(POLL_INTERVAL_MS);
+            }
         }
 
         private void updateSwitchButton() {
@@ -285,10 +452,10 @@ public class HomeFragment extends Fragment {
             secondRowParams.weight = 1;
             metricGrid.addView(secondRow, secondRowParams);
 
-            addMetricCell(firstRow, context, "温度", VALUE_PLACEHOLDER, "℃", AdminUi.TEXT_PRIMARY);
-            addMetricCell(firstRow, context, "湿度", VALUE_PLACEHOLDER, "%", AdminUi.TEXT_PRIMARY);
-            addMetricCell(secondRow, context, "PM2.5", VALUE_PLACEHOLDER, "μg/m³", Color.rgb(91, 154, 255));
-            addMetricCell(secondRow, context, "CO₂", VALUE_PLACEHOLDER, "ppm", Color.rgb(245, 166, 35));
+            indoorTemperatureValueView = addMetricCell(firstRow, context, "温度", VALUE_PLACEHOLDER, "℃", AdminUi.TEXT_PRIMARY);
+            indoorHumidityValueView = addMetricCell(firstRow, context, "湿度", VALUE_PLACEHOLDER, "%", AdminUi.TEXT_PRIMARY);
+            indoorPm25ValueView = addMetricCell(secondRow, context, "PM2.5", VALUE_PLACEHOLDER, "μg/m³", Color.rgb(91, 154, 255));
+            indoorCo2ValueView = addMetricCell(secondRow, context, "CO₂", VALUE_PLACEHOLDER, "ppm", Color.rgb(245, 166, 35));
         }
 
         private void buildHumidityRow(Context context, LinearLayout humidityRow) {
@@ -309,6 +476,7 @@ public class HomeFragment extends Fragment {
             LinearLayout.LayoutParams humidityValueParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             humidityValueParams.leftMargin = AdminUi.dp(context, 10);
             humidityContent.addView(humidityValue, humidityValueParams);
+            indoorAbsoluteHumidityValueView = humidityValue;
 
             TextView humidityUnit = AdminUi.text(context, "g/kg", 14, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
             LinearLayout.LayoutParams humidityUnitParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -330,7 +498,7 @@ public class HomeFragment extends Fragment {
             addModeModule(context, moduleRow, "送风模式", false);
         }
 
-        private void addMetricCell(LinearLayout parent, Context context, String label, String value, String unit, int valueColor) {
+        private TextView addMetricCell(LinearLayout parent, Context context, String label, String value, String unit, int valueColor) {
             LinearLayout cell = AdminUi.column(context);
             cell.setGravity(Gravity.CENTER);
             parent.addView(cell, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
@@ -353,6 +521,7 @@ public class HomeFragment extends Fragment {
             LinearLayout.LayoutParams unitParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             unitParams.leftMargin = AdminUi.dp(context, 2);
             valueRow.addView(unitView, unitParams);
+            return valueView;
         }
 
         private LinearLayout buildHumidityModeModule(Context context) {
@@ -416,15 +585,18 @@ public class HomeFragment extends Fragment {
 
             if (smartMode) {
                 smartModeButton = button;
-                button.setOnClickListener(v -> {
-                    smartModeEnabled = !smartModeEnabled;
+                button.setOnClickListener(v -> writeIntValue(100, smartModeEnabled ? 0 : 1, value -> {
+                    smartModeEnabled = value == 1;
                     refreshSmartButtons();
-                });
+                }));
             } else {
                 supplyModeButton = button;
                 button.setOnClickListener(v -> {
-                    supplyModeIndex = (supplyModeIndex + 1) % SUPPLY_MODES.length;
-                    refreshSupplyButtons();
+                    int next = (supplyModeIndex + 1) % SUPPLY_MODES.length;
+                    writeIntValue(159, next, value -> {
+                        supplyModeIndex = clampIndex(value, SUPPLY_MODES.length);
+                        refreshSupplyButtons();
+                    });
                 });
             }
         }
@@ -470,8 +642,11 @@ public class HomeFragment extends Fragment {
 
         private void cycleHumidityMode(int delta) {
             int length = HUMIDITY_MODES.length;
-            humidityModeIndex = (humidityModeIndex + delta + length) % length;
-            refreshHumidityModeValue();
+            int next = (humidityModeIndex + delta + length) % length;
+            writeIntValue(513, next, value -> {
+                humidityModeIndex = clampIndex(value, HUMIDITY_MODES.length);
+                refreshHumidityModeValue();
+            });
         }
 
         private void refreshHumidityModeButton() {
@@ -516,19 +691,61 @@ public class HomeFragment extends Fragment {
         private String getHumidityModeText() {
             return HUMIDITY_MODES[humidityModeIndex];
         }
+
+        private void writeIntValue(int address, int value, IntValueConsumer consumer) {
+            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
+            if (spec == null || !spec.canWrite() || !isAdded()) {
+                return;
+            }
+            ModbusManager.get(requireContext()).write(spec, value, new ModbusManager.VoidCallback() {
+                @Override
+                public void onSuccess() {
+                    consumer.accept(value);
+                    requestImmediatePoll();
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    Toast.makeText(requireContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        private int clampIndex(int value, int length) {
+            if (length <= 0) {
+                return 0;
+            }
+            return Math.max(0, Math.min(length - 1, value));
+        }
+
+        private interface IntValueConsumer {
+            void accept(int value);
+        }
     }
 
     public static class SmartModePageFragment extends Fragment {
+        private static final long POLL_INTERVAL_MS = 1000L;
         private static final String STATE_TEMPERATURE_SETTING = "temperature_setting";
         private static final String STATE_HUMIDITY_SETTING = "humidity_setting";
         private static final String STATE_SUPPLY_SETTING = "supply_setting";
+        private final Handler pollHandler = new Handler(Looper.getMainLooper());
+        private final Runnable pollRunnable = this::pollSmartAirValues;
 
-        private double temperatureSetting = Double.NaN;
-        private double humiditySetting = Double.NaN;
+        private int temperatureSetting = -1;
+        private int humiditySetting = -1;
         private int supplySetting = -1;
+        private boolean pollingActive;
+        private boolean pollInFlight;
+        private int pendingPollReads;
         private TextView temperatureValueView;
         private TextView humidityValueView;
         private TextView supplyValueView;
+        private TextView freshAirTemperatureValueView;
+        private TextView supplyAirTemperatureValueView;
+        private TextView freshAirHumidityValueView;
+        private TextView supplyAirHumidityValueView;
+        private TextView freshAirAbsoluteHumidityValueView;
+        private TextView supplyAirAbsoluteHumidityValueView;
 
         @Override
         public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -536,8 +753,8 @@ public class HomeFragment extends Fragment {
             if (savedInstanceState == null) {
                 return;
             }
-            temperatureSetting = savedInstanceState.getDouble(STATE_TEMPERATURE_SETTING, temperatureSetting);
-            humiditySetting = savedInstanceState.getDouble(STATE_HUMIDITY_SETTING, humiditySetting);
+            temperatureSetting = savedInstanceState.getInt(STATE_TEMPERATURE_SETTING, temperatureSetting);
+            humiditySetting = savedInstanceState.getInt(STATE_HUMIDITY_SETTING, humiditySetting);
             supplySetting = savedInstanceState.getInt(STATE_SUPPLY_SETTING, supplySetting);
         }
 
@@ -567,11 +784,154 @@ public class HomeFragment extends Fragment {
         }
 
         @Override
+        public void onResume() {
+            super.onResume();
+            startPolling();
+        }
+
+        @Override
+        public void onPause() {
+            stopPolling();
+            super.onPause();
+        }
+
+        @Override
+        public void onDestroyView() {
+            stopPolling();
+            temperatureValueView = null;
+            humidityValueView = null;
+            supplyValueView = null;
+            freshAirTemperatureValueView = null;
+            supplyAirTemperatureValueView = null;
+            freshAirHumidityValueView = null;
+            supplyAirHumidityValueView = null;
+            freshAirAbsoluteHumidityValueView = null;
+            supplyAirAbsoluteHumidityValueView = null;
+            super.onDestroyView();
+        }
+
+        @Override
         public void onSaveInstanceState(@NonNull Bundle outState) {
             super.onSaveInstanceState(outState);
-            outState.putDouble(STATE_TEMPERATURE_SETTING, temperatureSetting);
-            outState.putDouble(STATE_HUMIDITY_SETTING, humiditySetting);
+            outState.putInt(STATE_TEMPERATURE_SETTING, temperatureSetting);
+            outState.putInt(STATE_HUMIDITY_SETTING, humiditySetting);
             outState.putInt(STATE_SUPPLY_SETTING, supplySetting);
+        }
+
+        private void startPolling() {
+            pollingActive = true;
+            requestImmediatePoll();
+        }
+
+        private void stopPolling() {
+            pollingActive = false;
+            pollInFlight = false;
+            pendingPollReads = 0;
+            pollHandler.removeCallbacks(pollRunnable);
+        }
+
+        private void requestImmediatePoll() {
+            scheduleNextPoll(0L);
+        }
+
+        private void scheduleNextPoll(long delayMs) {
+            pollHandler.removeCallbacks(pollRunnable);
+            if (!pollingActive || !isAdded()) {
+                return;
+            }
+            pollHandler.postDelayed(pollRunnable, Math.max(0L, delayMs));
+        }
+
+        private void pollSmartAirValues() {
+            if (!pollingActive || !isAdded()) {
+                return;
+            }
+            if (pollInFlight) {
+                scheduleNextPoll(POLL_INTERVAL_MS);
+                return;
+            }
+            int reads = 0;
+            reads += refreshSettingValue(temperatureValueView, 5, value -> temperatureSetting = value);
+            reads += refreshSettingValue(humidityValueView, 6, value -> humiditySetting = value);
+            reads += refreshSettingValue(supplyValueView, 15, value -> supplySetting = value);
+            reads += refreshValue(freshAirTemperatureValueView, 500);
+            reads += refreshValue(supplyAirTemperatureValueView, 502);
+            reads += refreshValue(freshAirHumidityValueView, 501);
+            reads += refreshValue(supplyAirHumidityValueView, 503);
+            reads += refreshValue(freshAirAbsoluteHumidityValueView, 506);
+            reads += refreshValue(supplyAirAbsoluteHumidityValueView, 507);
+            if (reads <= 0) {
+                scheduleNextPoll(POLL_INTERVAL_MS);
+                return;
+            }
+            pollInFlight = true;
+            pendingPollReads = reads;
+        }
+
+        private int refreshSettingValue(TextView view, int address, IntValueConsumer consumer) {
+            if (view == null) {
+                return 0;
+            }
+            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
+            if (spec == null || !spec.canRead()) {
+                view.setText(VALUE_PLACEHOLDER);
+                return 0;
+            }
+            ModbusManager.get(view.getContext()).read(spec, new ModbusManager.IntCallback() {
+                @Override
+                public void onSuccess(int value) {
+                    consumer.accept(value);
+                    view.setTag(value);
+                    view.setText(String.valueOf(value));
+                    onPollReadFinished();
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    view.setText(VALUE_PLACEHOLDER);
+                    onPollReadFinished();
+                }
+            });
+            return 1;
+        }
+
+        private int refreshValue(TextView view, int address) {
+            if (view == null) {
+                return 0;
+            }
+            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
+            if (spec == null || !spec.canRead()) {
+                view.setText(VALUE_PLACEHOLDER);
+                return 0;
+            }
+            ModbusManager.get(view.getContext()).read(spec, new ModbusManager.IntCallback() {
+                @Override
+                public void onSuccess(int value) {
+                    view.setTag(value);
+                    view.setText(ModbusUi.formatDefault(spec, value));
+                    onPollReadFinished();
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    view.setText(VALUE_PLACEHOLDER);
+                    onPollReadFinished();
+                }
+            });
+            return 1;
+        }
+
+        private void onPollReadFinished() {
+            if (pendingPollReads > 0) {
+                pendingPollReads--;
+            }
+            if (pendingPollReads > 0) {
+                return;
+            }
+            pollInFlight = false;
+            if (pollingActive) {
+                scheduleNextPoll(POLL_INTERVAL_MS);
+            }
         }
 
         private LinearLayout buildSmartAirTable(Context context) {
@@ -583,14 +943,20 @@ public class HomeFragment extends Fragment {
             table.addView(buildTableRow(context, true, "新风", "", "", "送风", "", ""),
                     AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 58)));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
-            table.addView(buildTableRow(context, false, "温度", VALUE_PLACEHOLDER, "℃", "温度", VALUE_PLACEHOLDER, "℃"),
-                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
+            ValueTableRow temperatureRow = buildValueTableRow(context, "温度", VALUE_PLACEHOLDER, "℃", "温度", VALUE_PLACEHOLDER, "℃");
+            freshAirTemperatureValueView = temperatureRow.leftValueView;
+            supplyAirTemperatureValueView = temperatureRow.rightValueView;
+            table.addView(temperatureRow.container, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
-            table.addView(buildTableRow(context, false, "湿度", VALUE_PLACEHOLDER, "%", "湿度", VALUE_PLACEHOLDER, "%"),
-                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
+            ValueTableRow humidityRow = buildValueTableRow(context, "湿度", VALUE_PLACEHOLDER, "%", "湿度", VALUE_PLACEHOLDER, "%");
+            freshAirHumidityValueView = humidityRow.leftValueView;
+            supplyAirHumidityValueView = humidityRow.rightValueView;
+            table.addView(humidityRow.container, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
-            table.addView(buildTableRow(context, false, "含湿量", VALUE_PLACEHOLDER, "g/kg", "含湿量", VALUE_PLACEHOLDER, "g/kg"),
-                    AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
+            ValueTableRow absoluteHumidityRow = buildValueTableRow(context, "含湿量", VALUE_PLACEHOLDER, "g/kg", "含湿量", VALUE_PLACEHOLDER, "g/kg");
+            freshAirAbsoluteHumidityValueView = absoluteHumidityRow.leftValueView;
+            supplyAirAbsoluteHumidityValueView = absoluteHumidityRow.rightValueView;
+            table.addView(absoluteHumidityRow.container, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 44)));
             return table;
         }
 
@@ -642,6 +1008,47 @@ public class HomeFragment extends Fragment {
             return cell;
         }
 
+        private ValueTableRow buildValueTableRow(Context context,
+                                                 String leftLabel, String leftValue, String leftUnit,
+                                                 String rightLabel, String rightValue, String rightUnit) {
+            LinearLayout row = AdminUi.row(context);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+
+            ValueTableCell leftCell = buildValueTableCell(context, leftLabel, leftValue, leftUnit);
+            row.addView(leftCell.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+            View divider = new View(context);
+            divider.setBackgroundColor(Color.rgb(32, 214, 226));
+            row.addView(divider, AdminUi.lp(AdminUi.dp(context, 1), ViewGroup.LayoutParams.MATCH_PARENT));
+
+            ValueTableCell rightCell = buildValueTableCell(context, rightLabel, rightValue, rightUnit);
+            row.addView(rightCell.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+            return new ValueTableRow(row, leftCell.valueView, rightCell.valueView);
+        }
+
+        private ValueTableCell buildValueTableCell(Context context, String labelText, String valueText, String unitText) {
+            LinearLayout cell = AdminUi.column(context);
+            cell.setGravity(Gravity.CENTER);
+            cell.setPadding(AdminUi.dp(context, 12), 0, AdminUi.dp(context, 12), 0);
+
+            LinearLayout content = AdminUi.row(context);
+            content.setGravity(Gravity.CENTER_VERTICAL);
+            cell.addView(content, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            TextView label = AdminUi.text(context, labelText, 13, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
+            label.setGravity(Gravity.CENTER_VERTICAL);
+            content.addView(label, AdminUi.weightedLp(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+            TextView value = AdminUi.text(context, valueText, 22, AdminUi.ACCENT, Typeface.BOLD);
+            content.addView(value, AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            TextView unit = AdminUi.text(context, unitText, 11, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
+            LinearLayout.LayoutParams unitParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            unitParams.leftMargin = AdminUi.dp(context, 8);
+            content.addView(unit, unitParams);
+            return new ValueTableCell(cell, value);
+        }
+
         private View dividerLine(Context context) {
             View divider = new View(context);
             divider.setBackgroundColor(Color.rgb(42, 138, 155));
@@ -661,13 +1068,16 @@ public class HomeFragment extends Fragment {
 
             SummaryItem temperatureItem = buildSummaryItem(context, "温度设定", "℃");
             temperatureValueView = temperatureItem.valueView;
-            temperatureItem.container.setOnClickListener(v -> showDecimalInputDialog(
+            temperatureItem.container.setOnClickListener(v -> showIntegerInputDialog(
                     "\u6e29\u5ea6\u8bbe\u5b9a",
                     temperatureSetting,
-                    false,
+                    10,
+                    50,
                     value -> {
-                        temperatureSetting = value;
-                        refreshSummaryValues();
+                        writeSettingValue(5, value, () -> {
+                            temperatureSetting = value;
+                            refreshSummaryValues();
+                        });
                     }));
             row.addView(temperatureItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
@@ -677,13 +1087,16 @@ public class HomeFragment extends Fragment {
 
             SummaryItem humidityItem = buildSummaryItem(context, "湿度设定", "%");
             humidityValueView = humidityItem.valueView;
-            humidityItem.container.setOnClickListener(v -> showDecimalInputDialog(
+            humidityItem.container.setOnClickListener(v -> showIntegerInputDialog(
                     "\u6e7f\u5ea6\u8bbe\u5b9a",
                     humiditySetting,
-                    true,
+                    30,
+                    100,
                     value -> {
-                        humiditySetting = value;
-                        refreshSummaryValues();
+                        writeSettingValue(6, value, () -> {
+                            humiditySetting = value;
+                            refreshSummaryValues();
+                        });
                     }));
             row.addView(humidityItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
@@ -696,11 +1109,13 @@ public class HomeFragment extends Fragment {
             supplyItem.container.setOnClickListener(v -> showIntegerInputDialog(
                     "\u9001\u98ce\u91cf",
                     supplySetting,
-                    0,
+                    50,
                     100,
                     value -> {
-                        supplySetting = value;
-                        refreshSummaryValues();
+                        writeSettingValue(15, value, () -> {
+                            supplySetting = value;
+                            refreshSummaryValues();
+                        });
                     }));
             row.addView(supplyItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
             return module;
@@ -733,14 +1148,33 @@ public class HomeFragment extends Fragment {
 
         private void refreshSummaryValues() {
             if (temperatureValueView != null) {
-                temperatureValueView.setText(Double.isNaN(temperatureSetting) ? VALUE_PLACEHOLDER : formatOneDecimal(temperatureSetting));
+                temperatureValueView.setText(temperatureSetting < 0 ? VALUE_PLACEHOLDER : String.valueOf(temperatureSetting));
             }
             if (humidityValueView != null) {
-                humidityValueView.setText(Double.isNaN(humiditySetting) ? VALUE_PLACEHOLDER : formatOneDecimal(humiditySetting));
+                humidityValueView.setText(humiditySetting < 0 ? VALUE_PLACEHOLDER : String.valueOf(humiditySetting));
             }
             if (supplyValueView != null) {
                 supplyValueView.setText(supplySetting < 0 ? VALUE_PLACEHOLDER : String.valueOf(supplySetting));
             }
+        }
+
+        private void writeSettingValue(int address, int value, Runnable onSuccess) {
+            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
+            if (spec == null || !spec.canWrite() || !isAdded()) {
+                return;
+            }
+            ModbusManager.get(requireContext()).write(spec, value, new ModbusManager.VoidCallback() {
+                @Override
+                public void onSuccess() {
+                    onSuccess.run();
+                    requestImmediatePoll();
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    Toast.makeText(requireContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
         }
 
         private void showDecimalInputDialog(String title, double currentValue, boolean percentRange, DoubleValueConsumer onValueConfirmed) {
@@ -910,6 +1344,28 @@ public class HomeFragment extends Fragment {
 
         private interface IntValueConsumer {
             void accept(int value);
+        }
+
+        private static final class ValueTableRow {
+            final LinearLayout container;
+            final TextView leftValueView;
+            final TextView rightValueView;
+
+            ValueTableRow(LinearLayout container, TextView leftValueView, TextView rightValueView) {
+                this.container = container;
+                this.leftValueView = leftValueView;
+                this.rightValueView = rightValueView;
+            }
+        }
+
+        private static final class ValueTableCell {
+            final LinearLayout container;
+            final TextView valueView;
+
+            ValueTableCell(LinearLayout container, TextView valueView) {
+                this.container = container;
+                this.valueView = valueView;
+            }
         }
 
         private static final class InputDialogParts {

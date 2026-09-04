@@ -36,6 +36,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param5_preheat_temp_setpoint_value"
                 android:layout_width="96dp"
                 android:layout_height="52dp"
                 android:layout_marginStart="8dp"
@@ -79,6 +80,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param5_preheat_ratio_adjust_value"
                 android:layout_width="96dp"
                 android:layout_height="52dp"
                 android:layout_marginStart="8dp"
@@ -122,6 +124,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param5_boost_first_check_time_value"
                 android:layout_width="96dp"
                 android:layout_height="52dp"
                 android:layout_marginStart="8dp"
@@ -165,6 +168,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param5_boost_force_to_energy_extra_time_value"
                 android:layout_width="96dp"
                 android:layout_height="52dp"
                 android:layout_marginStart="8dp"
@@ -208,6 +212,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param5_boost_exit_energy_hold_time_value"
                 android:layout_width="96dp"
                 android:layout_height="52dp"
                 android:layout_marginStart="8dp"

@@ -36,6 +36,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param4_energy_pm25_limit_value"
                 android:layout_width="78dp"
                 android:layout_height="46dp"
                 android:layout_marginStart="8dp"
@@ -79,6 +80,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param4_comfort_pm25_limit_value"
                 android:layout_width="78dp"
                 android:layout_height="46dp"
                 android:layout_marginStart="8dp"
@@ -122,6 +124,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param4_pm25_rise_limit_value"
                 android:layout_width="78dp"
                 android:layout_height="46dp"
                 android:layout_marginStart="8dp"
@@ -165,6 +168,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param4_energy_co2_limit_value"
                 android:layout_width="78dp"
                 android:layout_height="46dp"
                 android:layout_marginStart="8dp"
@@ -208,6 +212,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param4_comfort_co2_limit_value"
                 android:layout_width="78dp"
                 android:layout_height="46dp"
                 android:layout_marginStart="8dp"
@@ -251,6 +256,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/param4_co2_rise_limit_value"
                 android:layout_width="78dp"
                 android:layout_height="46dp"
                 android:layout_marginStart="8dp"

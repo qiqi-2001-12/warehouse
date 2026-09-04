@@ -39,6 +39,7 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/param3_energy_fan_output_value"
                     android:layout_width="60dp"
                     android:layout_height="34dp"
                     android:background="@drawable/factory_param_value_bg"
@@ -89,6 +90,7 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/param3_comfort_fan_output_value"
                     android:layout_width="60dp"
                     android:layout_height="34dp"
                     android:background="@drawable/factory_param_value_bg"
@@ -139,6 +141,7 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/param3_boost_fan_output_value"
                     android:layout_width="60dp"
                     android:layout_height="34dp"
                     android:background="@drawable/factory_param_value_bg"
@@ -194,6 +197,7 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/param3_energy_fresh_air_valve_value"
                     android:layout_width="60dp"
                     android:layout_height="34dp"
                     android:background="@drawable/factory_param_value_bg"
@@ -244,6 +248,7 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/param3_comfort_fresh_air_valve_value"
                     android:layout_width="60dp"
                     android:layout_height="34dp"
                     android:background="@drawable/factory_param_value_bg"
@@ -294,6 +299,7 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/param3_boost_fresh_air_valve_value"
                     android:layout_width="60dp"
                     android:layout_height="34dp"
                     android:background="@drawable/factory_param_value_bg"
@@ -349,6 +355,7 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/param3_energy_exhaust_valve_value"
                     android:layout_width="60dp"
                     android:layout_height="34dp"
                     android:background="@drawable/factory_param_value_bg"
@@ -399,6 +406,7 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/param3_comfort_exhaust_valve_value"
                     android:layout_width="60dp"
                     android:layout_height="34dp"
                     android:background="@drawable/factory_param_value_bg"
@@ -449,6 +457,7 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/param3_boost_exhaust_valve_value"
                     android:layout_width="60dp"
                     android:layout_height="34dp"
                     android:background="@drawable/factory_param_value_bg"
@@ -504,6 +513,7 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/param3_fresh_air_heater_max_output_value"
                     android:layout_width="68dp"
                     android:layout_height="40dp"
                     android:background="@drawable/factory_param_value_bg"
