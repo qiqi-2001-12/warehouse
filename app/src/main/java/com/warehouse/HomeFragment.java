@@ -10,19 +10,23 @@ import android.graphics.Typeface;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.core.widget.ImageViewCompat;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
@@ -513,12 +517,27 @@ public class HomeFragment extends Fragment {
     }
 
     public static class SmartModePageFragment extends Fragment {
+        private static final String STATE_TEMPERATURE_SETTING = "temperature_setting";
+        private static final String STATE_HUMIDITY_SETTING = "humidity_setting";
+        private static final String STATE_SUPPLY_SETTING = "supply_setting";
+
         private double temperatureSetting = 24.0;
         private double humiditySetting = 50.0;
         private int supplySetting = 100;
         private TextView temperatureValueView;
         private TextView humidityValueView;
         private TextView supplyValueView;
+
+        @Override
+        public void onCreate(@Nullable Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            if (savedInstanceState == null) {
+                return;
+            }
+            temperatureSetting = savedInstanceState.getDouble(STATE_TEMPERATURE_SETTING, temperatureSetting);
+            humiditySetting = savedInstanceState.getDouble(STATE_HUMIDITY_SETTING, humiditySetting);
+            supplySetting = savedInstanceState.getInt(STATE_SUPPLY_SETTING, supplySetting);
+        }
 
         @Nullable
         @Override
@@ -543,6 +562,14 @@ public class HomeFragment extends Fragment {
             }
             refreshSummaryValues();
             return root;
+        }
+
+        @Override
+        public void onSaveInstanceState(@NonNull Bundle outState) {
+            super.onSaveInstanceState(outState);
+            outState.putDouble(STATE_TEMPERATURE_SETTING, temperatureSetting);
+            outState.putDouble(STATE_HUMIDITY_SETTING, humiditySetting);
+            outState.putInt(STATE_SUPPLY_SETTING, supplySetting);
         }
 
         private LinearLayout buildSmartAirTable(Context context) {
@@ -632,6 +659,14 @@ public class HomeFragment extends Fragment {
 
             SummaryItem temperatureItem = buildSummaryItem(context, "温度设定", "℃");
             temperatureValueView = temperatureItem.valueView;
+            temperatureItem.container.setOnClickListener(v -> showDecimalInputDialog(
+                    "\u6e29\u5ea6\u8bbe\u5b9a",
+                    temperatureSetting,
+                    false,
+                    value -> {
+                        temperatureSetting = value;
+                        refreshSummaryValues();
+                    }));
             row.addView(temperatureItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
             View divider1 = new View(context);
@@ -640,6 +675,14 @@ public class HomeFragment extends Fragment {
 
             SummaryItem humidityItem = buildSummaryItem(context, "湿度设定", "%");
             humidityValueView = humidityItem.valueView;
+            humidityItem.container.setOnClickListener(v -> showDecimalInputDialog(
+                    "\u6e7f\u5ea6\u8bbe\u5b9a",
+                    humiditySetting,
+                    true,
+                    value -> {
+                        humiditySetting = value;
+                        refreshSummaryValues();
+                    }));
             row.addView(humidityItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
             View divider2 = new View(context);
@@ -648,6 +691,15 @@ public class HomeFragment extends Fragment {
 
             SummaryItem supplyItem = buildSummaryItem(context, "送风量", "%");
             supplyValueView = supplyItem.valueView;
+            supplyItem.container.setOnClickListener(v -> showIntegerInputDialog(
+                    "\u9001\u98ce\u91cf",
+                    supplySetting,
+                    0,
+                    100,
+                    value -> {
+                        supplySetting = value;
+                        refreshSummaryValues();
+                    }));
             row.addView(supplyItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
             return module;
         }
@@ -689,6 +741,128 @@ public class HomeFragment extends Fragment {
             }
         }
 
+        private void showDecimalInputDialog(String title, double currentValue, boolean percentRange, DoubleValueConsumer onValueConfirmed) {
+            if (!isAdded()) {
+                return;
+            }
+            Context context = requireContext();
+            EditText input = createInputField(context, formatOneDecimal(currentValue), InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            InputDialogParts dialogParts = buildInputDialog(
+                    context,
+                    percentRange ? title + " 0-100" : title,
+                    input);
+            dialogParts.cancelButton.setOnClickListener(v -> dialogParts.dialog.dismiss());
+            dialogParts.confirmButton.setOnClickListener(v -> {
+                String text = input.getText() == null ? "" : input.getText().toString().trim();
+                try {
+                    double value = Double.parseDouble(text);
+                    if (!Double.isFinite(value)) {
+                        throw new NumberFormatException("not finite");
+                    }
+                    if (percentRange && (value < 0.0 || value > 100.0)) {
+                        Toast.makeText(context, "\u8bf7\u8f93\u5165 0-100 \u4e4b\u95f4\u7684\u6570\u503c", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    onValueConfirmed.accept(value);
+                    dialogParts.dialog.dismiss();
+                } catch (NumberFormatException error) {
+                    Toast.makeText(context, "\u8bf7\u8f93\u5165\u6709\u6548\u6570\u503c", Toast.LENGTH_SHORT).show();
+                }
+            });
+            dialogParts.dialog.show();
+            styleCompactDialog(dialogParts.dialog);
+        }
+
+        private void showIntegerInputDialog(String title, int currentValue, int minValue, int maxValue, IntValueConsumer onValueConfirmed) {
+            if (!isAdded()) {
+                return;
+            }
+            Context context = requireContext();
+            EditText input = createInputField(context, String.valueOf(currentValue), InputType.TYPE_CLASS_NUMBER);
+            InputDialogParts dialogParts = buildInputDialog(
+                    context,
+                    title + " " + minValue + "-" + maxValue,
+                    input);
+            dialogParts.cancelButton.setOnClickListener(v -> dialogParts.dialog.dismiss());
+            dialogParts.confirmButton.setOnClickListener(v -> {
+                String text = input.getText() == null ? "" : input.getText().toString().trim();
+                try {
+                    int value = Integer.parseInt(text);
+                    if (value < minValue || value > maxValue) {
+                        Toast.makeText(context, "\u8bf7\u8f93\u5165 " + minValue + "-" + maxValue + " \u4e4b\u95f4\u7684\u6574\u6570", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    onValueConfirmed.accept(value);
+                    dialogParts.dialog.dismiss();
+                } catch (NumberFormatException error) {
+                    Toast.makeText(context, "\u8bf7\u8f93\u5165\u6709\u6548\u6574\u6570", Toast.LENGTH_SHORT).show();
+                }
+            });
+            dialogParts.dialog.show();
+            styleCompactDialog(dialogParts.dialog);
+        }
+
+        private InputDialogParts buildInputDialog(Context context, String hint, EditText input) {
+            LinearLayout root = AdminUi.column(context);
+            root.setGravity(Gravity.CENTER_HORIZONTAL);
+            root.setPadding(AdminUi.dp(context, 12), AdminUi.dp(context, 12), AdminUi.dp(context, 12), AdminUi.dp(context, 12));
+            root.setBackground(AdminUi.bg(AdminUi.PANEL_BG, 8, AdminUi.PANEL_STROKE, 1, context));
+            input.setHint(hint);
+
+            LinearLayout.LayoutParams inputParams = AdminUi.lp(AdminUi.mm(context, 44), ViewGroup.LayoutParams.WRAP_CONTENT);
+            root.addView(input, inputParams);
+
+            LinearLayout buttonRow = AdminUi.row(context);
+            buttonRow.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams buttonRowParams = AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            buttonRowParams.topMargin = AdminUi.dp(context, 12);
+            root.addView(buttonRow, buttonRowParams);
+
+            TextView cancelButton = createDialogActionButton(context, "\u53d6\u6d88", AdminUi.TEXT_SECONDARY, Color.rgb(12, 53, 73));
+            buttonRow.addView(cancelButton, AdminUi.weightedLp(0, AdminUi.dp(context, 54), 1));
+
+            View gap = new View(context);
+            buttonRow.addView(gap, AdminUi.lp(AdminUi.dp(context, 10), 1));
+
+            TextView confirmButton = createDialogActionButton(context, "\u786e\u5b9a", AdminUi.PAGE_BG, AdminUi.ACCENT);
+            buttonRow.addView(confirmButton, AdminUi.weightedLp(0, AdminUi.dp(context, 54), 1));
+
+            AlertDialog dialog = new AlertDialog.Builder(context)
+                    .setView(root)
+                    .create();
+            return new InputDialogParts(dialog, cancelButton, confirmButton);
+        }
+
+        private EditText createInputField(Context context, String value, int inputType) {
+            EditText input = new EditText(context);
+            input.setInputType(inputType);
+            input.setText(value);
+            input.setSelectAllOnFocus(true);
+            input.setSingleLine(true);
+            input.setTextColor(AdminUi.TEXT_PRIMARY);
+            input.setHintTextColor(AdminUi.TEXT_SECONDARY);
+            input.setTextSize(20);
+            input.setBackground(AdminUi.bg(Color.rgb(10, 38, 54), 6, Color.rgb(42, 138, 155), 1, context));
+            input.setPadding(AdminUi.dp(context, 14), AdminUi.dp(context, 12), AdminUi.dp(context, 14), AdminUi.dp(context, 12));
+            return input;
+        }
+
+        private void styleCompactDialog(AlertDialog dialog) {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(
+                        AdminUi.bg(AdminUi.PANEL_BG, 8, AdminUi.PANEL_STROKE, 1, requireContext()));
+                dialog.getWindow().setLayout(AdminUi.mm(requireContext(), 58), ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+        }
+
+        private TextView createDialogActionButton(Context context, String text, int textColor, int backgroundColor) {
+            TextView button = AdminUi.text(context, text, 18, textColor, Typeface.BOLD);
+            button.setBackground(AdminUi.bg(backgroundColor, 6, AdminUi.PANEL_STROKE, 1, context));
+            button.setClickable(true);
+            button.setFocusable(true);
+            return button;
+        }
+
         private LinearLayout buildFilterRow(Context context) {
             LinearLayout filterRow = AdminUi.row(context);
             filterRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -720,6 +894,26 @@ public class HomeFragment extends Fragment {
 
         private String formatOneDecimal(double value) {
             return String.format(java.util.Locale.CHINA, "%.1f", value);
+        }
+
+        private interface DoubleValueConsumer {
+            void accept(double value);
+        }
+
+        private interface IntValueConsumer {
+            void accept(int value);
+        }
+
+        private static final class InputDialogParts {
+            final AlertDialog dialog;
+            final TextView cancelButton;
+            final TextView confirmButton;
+
+            InputDialogParts(AlertDialog dialog, TextView cancelButton, TextView confirmButton) {
+                this.dialog = dialog;
+                this.cancelButton = cancelButton;
+                this.confirmButton = confirmButton;
+            }
         }
 
         private static final class SummaryItem {
