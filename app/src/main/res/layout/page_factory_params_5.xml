@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:paddingLeft="4dp"
+    android:paddingTop="4dp"
+    android:paddingRight="4dp"
+    android:paddingBottom="4dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingLeft="6dp"
+        android:paddingRight="6dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end|center_vertical"
+                android:includeFontPadding="false"
+                android:singleLine="true"
+                android:text="&#x65B0;&#x98CE;&#x9884;&#x70ED;&#x6E29;&#x5EA6;&#x8BBE;&#x5B9A;&#x503C;"
+                android:textColor="#E0F6F8"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="96dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/factory_param_value_bg"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:text="0.0"
+                android:textColor="#191C34"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:gravity="start|center_vertical"
+                android:includeFontPadding="false"
+                android:text="&#x2103;"
+                android:textColor="#E0F6F8"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end|center_vertical"
+                android:includeFontPadding="false"
+                android:singleLine="true"
+                android:text="&#x65B0;&#x98CE;&#x9884;&#x70ED;&#x6BD4;&#x4F8B;&#x8C03;&#x8282;"
+                android:textColor="#E0F6F8"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="96dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/factory_param_value_bg"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:text="0.0"
+                android:textColor="#191C34"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:gravity="start|center_vertical"
+                android:includeFontPadding="false"
+                android:text="&#x2103;"
+                android:textColor="#E0F6F8"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end|center_vertical"
+                android:includeFontPadding="false"
+                android:singleLine="true"
+                android:text="&#x5F3A;&#x529B;&#x6863;&#x9996;&#x6B21;&#x68C0;&#x67E5;&#x65F6;&#x95F4;"
+                android:textColor="#E0F6F8"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="96dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/factory_param_value_bg"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:text="0"
+                android:textColor="#191C34"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:gravity="start|center_vertical"
+                android:includeFontPadding="false"
+                android:text="&#x5206;&#x949F;"
+                android:textColor="#E0F6F8"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end|center_vertical"
+                android:includeFontPadding="false"
+                android:singleLine="true"
+                android:text="&#x5F3A;&#x529B;&#x6863;&#x5F3A;&#x5236;&#x5207;&#x8282;&#x80FD;&#x9644;&#x52A0;&#x65F6;&#x95F4;"
+                android:textColor="#E0F6F8"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="96dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/factory_param_value_bg"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:text="0"
+                android:textColor="#191C34"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:gravity="start|center_vertical"
+                android:includeFontPadding="false"
+                android:text="&#x5206;&#x949F;"
+                android:textColor="#E0F6F8"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end|center_vertical"
+                android:includeFontPadding="false"
+                android:singleLine="true"
+                android:text="&#x5F3A;&#x529B;&#x9000;&#x51FA;&#x540E;&#x8282;&#x80FD;&#x4FDD;&#x6301;&#x65F6;&#x95F4;"
+                android:textColor="#E0F6F8"
+                android:textSize="19sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="96dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/factory_param_value_bg"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:text="0"
+                android:textColor="#191C34"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:gravity="start|center_vertical"
+                android:includeFontPadding="false"
+                android:text="&#x5206;&#x949F;"
+                android:textColor="#E0F6F8"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

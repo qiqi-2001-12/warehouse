@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -25,6 +26,13 @@ final class AdminUi {
 
     static int dp(Context context, int value) {
         return Math.round(value * context.getResources().getDisplayMetrics().density);
+    }
+
+    static int mm(Context context, float value) {
+        return Math.round(TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_MM,
+                value,
+                context.getResources().getDisplayMetrics()));
     }
 
     static GradientDrawable bg(int color, int radiusDp, int strokeColor, int strokeDp, Context context) {

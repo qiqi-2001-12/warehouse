@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/admin_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#041D2B">
+
+    <LinearLayout
+        android:id="@+id/admin_shell"
+        android:layout_width="88mm"
+        android:layout_height="88mm"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:paddingLeft="18dp"
+        android:paddingTop="14dp"
+        android:paddingRight="18dp"
+        android:paddingBottom="14dp">
+
+        <LinearLayout
+            android:id="@+id/admin_top_bar"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btn_back"
+                android:layout_width="44dp"
+                android:layout_height="32dp"
+                android:background="@drawable/admin_button_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:text="←"
+                android:textColor="#E0F6F8"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/admin_tabs"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:gravity="end|center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tab_fault"
+                    android:layout_width="130dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/admin_button_bg"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:text="故障"
+                    android:textColor="#E0F6F8"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tab_factory"
+                    android:layout_width="130dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/admin_button_bg"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:text="厂家参数"
+                    android:textColor="#E0F6F8"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/admin_content"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/admin_content_bg" />
+    </LinearLayout>
+</FrameLayout>
