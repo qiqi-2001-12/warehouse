@@ -12,3 +12,7 @@ captures/
 
 *.apk
 *.ap_
+
+device-tree.fdt
+tmp_aar/
+me/

@@ -191,17 +191,22 @@ public class HomeFragment extends Fragment {
     }
 
     public static class IndoorStatusPageFragment extends Fragment {
-        private static final long POLL_INTERVAL_MS = 1000L;
+        private static final long METRIC_POLL_INTERVAL_MS = 1000L;
+        private static final long STATE_POLL_INTERVAL_MS = 3000L;
+        private static final long STATE_POLL_START_DELAY_MS = 400L;
         private final Handler pollHandler = new Handler(Looper.getMainLooper());
-        private final Runnable pollRunnable = this::pollSensorValues;
+        private final Runnable metricPollRunnable = this::pollMetricValues;
+        private final Runnable statePollRunnable = this::pollStateValues;
         private boolean switchOn;
         private boolean humidityAutoMode = true;
         private int humidityModeIndex = 0;
         private boolean smartModeEnabled = true;
         private int supplyModeIndex = 0;
         private boolean pollingActive;
-        private boolean pollInFlight;
-        private int pendingPollReads;
+        private boolean metricPollInFlight;
+        private boolean statePollInFlight;
+        private int pendingMetricReads;
+        private int pendingStateReads;
         private FrameLayout switchButton;
         private TextView switchButtonText;
         private TextView autoButton;
@@ -293,71 +298,122 @@ public class HomeFragment extends Fragment {
 
         private void startPolling() {
             pollingActive = true;
-            requestImmediatePoll();
+            requestImmediateMetricPoll();
+            requestImmediateStatePoll();
         }
 
         private void stopPolling() {
             pollingActive = false;
-            pollInFlight = false;
-            pendingPollReads = 0;
-            pollHandler.removeCallbacks(pollRunnable);
+            metricPollInFlight = false;
+            statePollInFlight = false;
+            pendingMetricReads = 0;
+            pendingStateReads = 0;
+            pollHandler.removeCallbacks(metricPollRunnable);
+            pollHandler.removeCallbacks(statePollRunnable);
         }
 
-        private void requestImmediatePoll() {
-            scheduleNextPoll(0L);
+        private void requestImmediateMetricPoll() {
+            scheduleNextMetricPoll(0L);
         }
 
-        private void scheduleNextPoll(long delayMs) {
-            pollHandler.removeCallbacks(pollRunnable);
+        private void requestImmediateStatePoll() {
+            scheduleNextStatePoll(STATE_POLL_START_DELAY_MS);
+        }
+
+        private void scheduleNextMetricPoll(long delayMs) {
+            pollHandler.removeCallbacks(metricPollRunnable);
             if (!pollingActive || !isAdded()) {
                 return;
             }
-            pollHandler.postDelayed(pollRunnable, Math.max(0L, delayMs));
+            pollHandler.postDelayed(metricPollRunnable, Math.max(0L, delayMs));
         }
 
-        private void pollSensorValues() {
+        private void scheduleNextStatePoll(long delayMs) {
+            pollHandler.removeCallbacks(statePollRunnable);
             if (!pollingActive || !isAdded()) {
                 return;
             }
-            if (pollInFlight) {
-                scheduleNextPoll(POLL_INTERVAL_MS);
+            pollHandler.postDelayed(statePollRunnable, Math.max(0L, delayMs));
+        }
+
+        private void pollMetricValues() {
+            if (!pollingActive || !isAdded()) {
                 return;
             }
-            int reads = 0;
-            reads += refreshState(515, value -> {
-                switchOn = value == 1;
-                updateSwitchButton();
-            });
-            reads += refreshState(514, value -> {
-                humidityAutoMode = value == 0;
-                refreshHumidityModeButton();
-            });
-            reads += refreshState(513, value -> {
-                humidityModeIndex = clampIndex(value, HUMIDITY_MODES.length);
-                refreshHumidityModeValue();
-            });
-            reads += refreshState(100, value -> {
+            if (metricPollInFlight) {
+                scheduleNextMetricPoll(METRIC_POLL_INTERVAL_MS);
+                return;
+            }
+            int reads = countMetricReads();
+            if (reads <= 0) {
+                scheduleNextMetricPoll(METRIC_POLL_INTERVAL_MS);
+                return;
+            }
+            metricPollInFlight = true;
+            pendingMetricReads = reads;
+            refreshMetricRange(this::onMetricPollReadFinished);
+        }
+
+        private void pollStateValues() {
+            if (!pollingActive || !isAdded()) {
+                return;
+            }
+            if (statePollInFlight) {
+                scheduleNextStatePoll(STATE_POLL_INTERVAL_MS);
+                return;
+            }
+            int reads = countStateReads();
+            if (reads <= 0) {
+                scheduleNextStatePoll(STATE_POLL_INTERVAL_MS);
+                return;
+            }
+            statePollInFlight = true;
+            pendingStateReads = reads;
+            refreshControlStateRange(this::onStatePollReadFinished);
+            refreshState(100, value -> {
                 smartModeEnabled = value == 1;
                 refreshSmartButtons();
-            });
-            reads += refreshState(159, value -> {
+            }, this::onStatePollReadFinished);
+            refreshState(159, value -> {
                 supplyModeIndex = clampIndex(value, SUPPLY_MODES.length);
                 refreshSupplyButtons();
-            });
-            reads += refreshValue(indoorTemperatureValueView, 863);
-            reads += refreshValue(indoorHumidityValueView, 864);
-            reads += refreshValue(indoorPm25ValueView, 860);
-            reads += refreshValue(indoorCo2ValueView, 861);
-            reads += refreshValue(indoorAbsoluteHumidityValueView, 865);
-            if (reads <= 0) {
-                scheduleNextPoll(POLL_INTERVAL_MS);
-                return;
-            }
-            pollInFlight = true;
-            pendingPollReads = reads;
+            }, this::onStatePollReadFinished);
         }
 
-        private int refreshState(int address, IntValueConsumer consumer) {
+        private int countMetricReads() {
+            return hasReadableMetricRange() ? 1 : 0;
+        }
+
+        private int countStateReads() {
+            int reads = 0;
+            reads += hasReadableControlStateRange() ? 1 : 0;
+            reads += canReadAddress(100) ? 1 : 0;
+            reads += canReadAddress(159) ? 1 : 0;
+            return reads;
+        }
+
+        private boolean hasReadableMetricRange() {
+            return canReadValue(indoorTemperatureValueView, 863)
+                    || canReadValue(indoorHumidityValueView, 864)
+                    || canReadValue(indoorPm25ValueView, 860)
+                    || canReadValue(indoorCo2ValueView, 861)
+                    || canReadValue(indoorAbsoluteHumidityValueView, 865);
+        }
+
+        private boolean hasReadableControlStateRange() {
+            return canReadAddress(513) || canReadAddress(514) || canReadAddress(515);
+        }
+
+        private boolean canReadValue(TextView view, int address) {
+            return view != null && canReadAddress(address);
+        }
+
+        private boolean canReadAddress(int address) {
+            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
+            return spec != null && spec.canRead();
+        }
+
+        private int refreshState(int address, IntValueConsumer consumer, Runnable onFinished) {
             ModbusRegisterSpec spec = ModbusTable.byAddress(address);
             if (spec == null || !spec.canRead()) {
                 return 0;
@@ -366,53 +422,120 @@ public class HomeFragment extends Fragment {
                 @Override
                 public void onSuccess(int value) {
                     consumer.accept(value);
-                    onPollReadFinished();
+                    onFinished.run();
                 }
 
                 @Override
                 public void onError(Exception error) {
-                    onPollReadFinished();
+                    onFinished.run();
                 }
             });
             return 1;
         }
 
-        private int refreshValue(TextView view, int address) {
-            if (view == null) {
+        private int refreshMetricRange(Runnable onFinished) {
+            if (!hasReadableMetricRange()) {
                 return 0;
+            }
+            ModbusManager.get(requireContext()).readRange(860, 6, new ModbusManager.RangeCallback() {
+                @Override
+                public void onSuccess(int startAddress, int[] values) {
+                    updateMetricValue(indoorPm25ValueView, 860, startAddress, values);
+                    updateMetricValue(indoorCo2ValueView, 861, startAddress, values);
+                    updateMetricValue(indoorTemperatureValueView, 863, startAddress, values);
+                    updateMetricValue(indoorHumidityValueView, 864, startAddress, values);
+                    updateMetricValue(indoorAbsoluteHumidityValueView, 865, startAddress, values);
+                    onFinished.run();
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    showMetricPlaceholder(indoorPm25ValueView);
+                    showMetricPlaceholder(indoorCo2ValueView);
+                    showMetricPlaceholder(indoorTemperatureValueView);
+                    showMetricPlaceholder(indoorHumidityValueView);
+                    showMetricPlaceholder(indoorAbsoluteHumidityValueView);
+                    onFinished.run();
+                }
+            });
+            return 1;
+        }
+
+        private int refreshControlStateRange(Runnable onFinished) {
+            if (!hasReadableControlStateRange()) {
+                return 0;
+            }
+            ModbusManager.get(requireContext()).readRange(513, 3, new ModbusManager.RangeCallback() {
+                @Override
+                public void onSuccess(int startAddress, int[] values) {
+                    humidityModeIndex = clampIndex(rangeValue(startAddress, values, 513), HUMIDITY_MODES.length);
+                    humidityAutoMode = rangeValue(startAddress, values, 514) == 0;
+                    switchOn = rangeValue(startAddress, values, 515) == 1;
+                    refreshHumidityModeValue();
+                    refreshHumidityModeButton();
+                    updateSwitchButton();
+                    onFinished.run();
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    onFinished.run();
+                }
+            });
+            return 1;
+        }
+
+        private void updateMetricValue(TextView view, int address, int startAddress, int[] values) {
+            if (view == null) {
+                return;
             }
             ModbusRegisterSpec spec = ModbusTable.byAddress(address);
             if (spec == null || !spec.canRead()) {
                 view.setText(VALUE_PLACEHOLDER);
-                return 0;
-            }
-            ModbusManager.get(view.getContext()).read(spec, new ModbusManager.IntCallback() {
-                @Override
-                public void onSuccess(int value) {
-                    view.setTag(value);
-                    view.setText(ModbusUi.formatDefault(spec, value));
-                    onPollReadFinished();
-                }
-
-                @Override
-                public void onError(Exception error) {
-                    view.setText(VALUE_PLACEHOLDER);
-                    onPollReadFinished();
-                }
-            });
-            return 1;
-        }
-
-        private void onPollReadFinished() {
-            if (pendingPollReads > 0) {
-                pendingPollReads--;
-            }
-            if (pendingPollReads > 0) {
                 return;
             }
-            pollInFlight = false;
+            int value = rangeValue(startAddress, values, address);
+            view.setTag(value);
+            view.setText(ModbusUi.formatDefault(spec, value));
+        }
+
+        private void showMetricPlaceholder(TextView view) {
+            if (view != null) {
+                view.setText(VALUE_PLACEHOLDER);
+            }
+        }
+
+        private int rangeValue(int startAddress, int[] values, int address) {
+            int index = address - startAddress;
+            if (values == null || index < 0 || index >= values.length) {
+                return 0;
+            }
+            return values[index];
+        }
+
+        private void onMetricPollReadFinished() {
+            if (pendingMetricReads > 0) {
+                pendingMetricReads--;
+            }
+            if (pendingMetricReads > 0) {
+                return;
+            }
+            metricPollInFlight = false;
             if (pollingActive) {
-                scheduleNextPoll(POLL_INTERVAL_MS);
+                scheduleNextMetricPoll(METRIC_POLL_INTERVAL_MS);
+            }
+        }
+
+        private void onStatePollReadFinished() {
+            if (pendingStateReads > 0) {
+                pendingStateReads--;
+            }
+            if (pendingStateReads > 0) {
+                return;
+            }
+            statePollInFlight = false;
+            if (pollingActive) {
+                scheduleNextStatePoll(STATE_POLL_INTERVAL_MS);
             }
         }
 
@@ -697,18 +820,26 @@ public class HomeFragment extends Fragment {
             if (spec == null || !spec.canWrite() || !isAdded()) {
                 return;
             }
+            consumer.accept(value);
             ModbusManager.get(requireContext()).write(spec, value, new ModbusManager.VoidCallback() {
                 @Override
                 public void onSuccess() {
-                    consumer.accept(value);
-                    requestImmediatePoll();
+                    requestImmediateMetricPoll();
+                    requestImmediateStatePoll();
                 }
 
                 @Override
                 public void onError(Exception error) {
-                    Toast.makeText(requireContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                    showLocalWriteWarning();
                 }
             });
+        }
+
+        private void showLocalWriteWarning() {
+            if (!isAdded()) {
+                return;
+            }
+            Toast.makeText(requireContext(), "\u4e3b\u63a7\u677f\u672a\u54cd\u5e94\uff0c\u754c\u9762\u5df2\u672c\u5730\u66f4\u65b0", Toast.LENGTH_SHORT).show();
         }
 
         private int clampIndex(int value, int length) {
@@ -850,22 +981,68 @@ public class HomeFragment extends Fragment {
                 scheduleNextPoll(POLL_INTERVAL_MS);
                 return;
             }
-            int reads = 0;
-            reads += refreshSettingValue(temperatureValueView, 5, value -> temperatureSetting = value);
-            reads += refreshSettingValue(humidityValueView, 6, value -> humiditySetting = value);
-            reads += refreshSettingValue(supplyValueView, 15, value -> supplySetting = value);
-            reads += refreshValue(freshAirTemperatureValueView, 500);
-            reads += refreshValue(supplyAirTemperatureValueView, 502);
-            reads += refreshValue(freshAirHumidityValueView, 501);
-            reads += refreshValue(supplyAirHumidityValueView, 503);
-            reads += refreshValue(freshAirAbsoluteHumidityValueView, 506);
-            reads += refreshValue(supplyAirAbsoluteHumidityValueView, 507);
+            int reads = countSmartAirReads();
             if (reads <= 0) {
                 scheduleNextPoll(POLL_INTERVAL_MS);
                 return;
             }
             pollInFlight = true;
             pendingPollReads = reads;
+            refreshSettingRange();
+            refreshSettingValue(supplyValueView, 15, value -> supplySetting = value);
+            refreshSmartAirRange();
+        }
+
+        private int countSmartAirReads() {
+            int reads = 0;
+            reads += hasReadableSettingRange() ? 1 : 0;
+            reads += canReadValue(supplyValueView, 15) ? 1 : 0;
+            reads += hasReadableSmartAirRange() ? 1 : 0;
+            return reads;
+        }
+
+        private boolean hasReadableSettingRange() {
+            return canReadValue(temperatureValueView, 5)
+                    || canReadValue(humidityValueView, 6);
+        }
+
+        private boolean hasReadableSmartAirRange() {
+            return canReadValue(freshAirTemperatureValueView, 500)
+                    || canReadValue(supplyAirTemperatureValueView, 502)
+                    || canReadValue(freshAirHumidityValueView, 501)
+                    || canReadValue(supplyAirHumidityValueView, 503)
+                    || canReadValue(freshAirAbsoluteHumidityValueView, 506)
+                    || canReadValue(supplyAirAbsoluteHumidityValueView, 507);
+        }
+
+        private boolean canReadValue(TextView view, int address) {
+            if (view == null) {
+                return false;
+            }
+            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
+            return spec != null && spec.canRead();
+        }
+
+        private int refreshSettingRange() {
+            if (!hasReadableSettingRange()) {
+                return 0;
+            }
+            ModbusManager.get(requireContext()).readRange(5, 2, new ModbusManager.RangeCallback() {
+                @Override
+                public void onSuccess(int startAddress, int[] values) {
+                    temperatureSetting = rangeValue(startAddress, values, 5);
+                    humiditySetting = rangeValue(startAddress, values, 6);
+                    refreshSummaryValues();
+                    onPollReadFinished();
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    refreshSummaryValues();
+                    onPollReadFinished();
+                }
+            });
+            return 1;
         }
 
         private int refreshSettingValue(TextView view, int address, IntValueConsumer consumer) {
@@ -888,37 +1065,69 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(Exception error) {
-                    view.setText(VALUE_PLACEHOLDER);
+                    refreshSummaryValues();
                     onPollReadFinished();
                 }
             });
             return 1;
         }
 
-        private int refreshValue(TextView view, int address) {
-            if (view == null) {
+        private int refreshSmartAirRange() {
+            if (!hasReadableSmartAirRange()) {
                 return 0;
             }
-            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-            if (spec == null || !spec.canRead()) {
-                view.setText(VALUE_PLACEHOLDER);
-                return 0;
-            }
-            ModbusManager.get(view.getContext()).read(spec, new ModbusManager.IntCallback() {
+            ModbusManager.get(requireContext()).readRange(500, 8, new ModbusManager.RangeCallback() {
                 @Override
-                public void onSuccess(int value) {
-                    view.setTag(value);
-                    view.setText(ModbusUi.formatDefault(spec, value));
+                public void onSuccess(int startAddress, int[] values) {
+                    updateSmartAirValue(freshAirTemperatureValueView, 500, startAddress, values);
+                    updateSmartAirValue(freshAirHumidityValueView, 501, startAddress, values);
+                    updateSmartAirValue(supplyAirTemperatureValueView, 502, startAddress, values);
+                    updateSmartAirValue(supplyAirHumidityValueView, 503, startAddress, values);
+                    updateSmartAirValue(freshAirAbsoluteHumidityValueView, 506, startAddress, values);
+                    updateSmartAirValue(supplyAirAbsoluteHumidityValueView, 507, startAddress, values);
                     onPollReadFinished();
                 }
 
                 @Override
                 public void onError(Exception error) {
-                    view.setText(VALUE_PLACEHOLDER);
+                    showValuePlaceholder(freshAirTemperatureValueView);
+                    showValuePlaceholder(freshAirHumidityValueView);
+                    showValuePlaceholder(supplyAirTemperatureValueView);
+                    showValuePlaceholder(supplyAirHumidityValueView);
+                    showValuePlaceholder(freshAirAbsoluteHumidityValueView);
+                    showValuePlaceholder(supplyAirAbsoluteHumidityValueView);
                     onPollReadFinished();
                 }
             });
             return 1;
+        }
+
+        private void updateSmartAirValue(TextView view, int address, int startAddress, int[] values) {
+            if (view == null) {
+                return;
+            }
+            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
+            if (spec == null || !spec.canRead()) {
+                view.setText(VALUE_PLACEHOLDER);
+                return;
+            }
+            int value = rangeValue(startAddress, values, address);
+            view.setTag(value);
+            view.setText(ModbusUi.formatDefault(spec, value));
+        }
+
+        private void showValuePlaceholder(TextView view) {
+            if (view != null) {
+                view.setText(VALUE_PLACEHOLDER);
+            }
+        }
+
+        private int rangeValue(int startAddress, int[] values, int address) {
+            int index = address - startAddress;
+            if (values == null || index < 0 || index >= values.length) {
+                return 0;
+            }
+            return values[index];
         }
 
         private void onPollReadFinished() {
@@ -1163,18 +1372,25 @@ public class HomeFragment extends Fragment {
             if (spec == null || !spec.canWrite() || !isAdded()) {
                 return;
             }
+            onSuccess.run();
             ModbusManager.get(requireContext()).write(spec, value, new ModbusManager.VoidCallback() {
                 @Override
                 public void onSuccess() {
-                    onSuccess.run();
                     requestImmediatePoll();
                 }
 
                 @Override
                 public void onError(Exception error) {
-                    Toast.makeText(requireContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                    showLocalWriteWarning();
                 }
             });
+        }
+
+        private void showLocalWriteWarning() {
+            if (!isAdded()) {
+                return;
+            }
+            Toast.makeText(requireContext(), "\u4e3b\u63a7\u677f\u672a\u54cd\u5e94\uff0c\u754c\u9762\u5df2\u672c\u5730\u66f4\u65b0", Toast.LENGTH_SHORT).show();
         }
 
         private void showDecimalInputDialog(String title, double currentValue, boolean percentRange, DoubleValueConsumer onValueConfirmed) {

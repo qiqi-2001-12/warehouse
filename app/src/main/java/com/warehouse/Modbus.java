@@ -20,11 +20,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import java.io.File;
 import java.io.Closeable;
 import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -32,6 +35,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import me.f1reking.serialportlib.SerialPortHelper;
 
 final class ModbusTable {
     private static final Map<Integer, ModbusRegisterSpec> BY_ADDRESS = new HashMap<Integer, ModbusRegisterSpec>();
@@ -373,18 +378,17 @@ final class ModbusUi {
             String text = input.getText() == null ? "" : input.getText().toString().trim();
             try {
                 final int value = spec.clamp(Integer.parseInt(text));
+                ModbusUi.updateLocalValue(targetView, spec, formatter, value);
+                dialog.dismiss();
                 ModbusManager.get(context).write(spec, value, new ModbusManager.VoidCallback(){
 
                     @Override
                     public void onSuccess() {
-                        targetView.setTag((Object)value);
-                        targetView.setText((CharSequence)formatter.format(spec, value));
-                        dialog.dismiss();
                     }
 
                     @Override
                     public void onError(Exception error) {
-                        Toast.makeText((Context)context, (CharSequence)("写入失败: " + error.getMessage()), (int)0).show();
+                        ModbusUi.showLocalWriteWarning(context);
                     }
                 });
             }
@@ -409,22 +413,33 @@ final class ModbusUi {
         }).setNegativeButton((CharSequence)"取消", null).setPositiveButton((CharSequence)"确定", null).create();
         dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
             final int value = spec.options[selected[0]].value;
+            ModbusUi.updateLocalValue(targetView, spec, formatter, value);
+            dialog.dismiss();
             ModbusManager.get(context).write(spec, value, new ModbusManager.VoidCallback(){
 
                 @Override
                 public void onSuccess() {
-                    targetView.setTag((Object)value);
-                    targetView.setText((CharSequence)formatter.format(spec, value));
-                    dialog.dismiss();
                 }
 
                 @Override
                 public void onError(Exception error) {
-                    Toast.makeText((Context)context, (CharSequence)("写入失败: " + error.getMessage()), (int)0).show();
+                    ModbusUi.showLocalWriteWarning(context);
                 }
             });
         }));
         dialog.show();
+    }
+
+    private static void updateLocalValue(TextView targetView, ModbusRegisterSpec spec, ValueFormatter formatter, int value) {
+        if (targetView == null) {
+            return;
+        }
+        targetView.setTag((Object)value);
+        targetView.setText((CharSequence)formatter.format(spec, value));
+    }
+
+    private static void showLocalWriteWarning(Context context) {
+        Toast.makeText(context, "\u4e3b\u63a7\u677f\u672a\u54cd\u5e94\uff0c\u754c\u9762\u5df2\u672c\u5730\u66f4\u65b0", Toast.LENGTH_SHORT).show();
     }
 
     private static int readTagAsInt(TextView view, int fallback) {
@@ -446,16 +461,18 @@ final class ModbusUi {
 
 
 final class ModbusManager {
-    private static final String DEFAULT_DEVICE_PATH = "/dev/ttyAS2";
+    private static final String TAG = "ModbusManager";
+    private static final String DEFAULT_DEVICE_PATH = "/dev/ttyAS3";
     private static final int DEFAULT_BAUD_RATE = 9600;
     private static final int DEFAULT_SLAVE_ID = 1;
     private static final ModbusManager INSTANCE = new ModbusManager();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Object lock = new Object();
+    private final Map<Integer, Integer> localValues = new ConcurrentHashMap<Integer, Integer>();
     private volatile Context appContext;
     private volatile String devicePath = DEFAULT_DEVICE_PATH;
-    private volatile int baudRate = 9600;
+    private volatile int baudRate = DEFAULT_BAUD_RATE;
     private volatile int slaveId = 1;
     @Nullable
     private ModbusRtuClient client;
@@ -492,12 +509,61 @@ final class ModbusManager {
         }
         this.executor.execute(() -> {
             try {
-                int value = this.ensureClient().readRegister(spec.address, spec.readFunctionCode);
-                this.postSuccess(callback, spec.decode(value));
+                int value = spec.decode(this.ensureClient().readRegister(spec.address, spec.readFunctionCode));
+                this.localValues.put(spec.address, value);
+                this.postSuccess(callback, value);
             }
             catch (Exception e) {
+                Log.e(TAG, "read failed"
+                        + " device=" + this.devicePath
+                        + " baud=" + this.baudRate
+                        + " slave=" + this.slaveId
+                        + " address=" + spec.address
+                        + " fc=" + spec.readFunctionCode, e);
                 this.resetClient();
-                this.postError(callback, e);
+                Integer localValue = this.localValues.get(spec.address);
+                if (localValue != null) {
+                    this.postSuccess(callback, localValue);
+                } else {
+                    this.postError(callback, e);
+                }
+            }
+        });
+    }
+
+    void readRange(int startAddress, int count, RangeCallback callback) {
+        if (callback == null) {
+            return;
+        }
+        if (startAddress < 0 || count < 1 || count > 125) {
+            this.postError(callback, (Exception)new IOException("invalid read range"));
+            return;
+        }
+        this.executor.execute(() -> {
+            try {
+                int[] rawValues = this.ensureClient().readRegisters(startAddress, count, 3);
+                int[] values = new int[rawValues.length];
+                for (int i = 0; i < rawValues.length; i++) {
+                    int address = startAddress + i;
+                    values[i] = this.decodeAddressValue(address, rawValues[i]);
+                    this.localValues.put(address, values[i]);
+                }
+                this.postSuccess(callback, startAddress, values);
+            }
+            catch (Exception e) {
+                Log.e(TAG, "range read failed"
+                        + " device=" + this.devicePath
+                        + " baud=" + this.baudRate
+                        + " slave=" + this.slaveId
+                        + " start=" + startAddress
+                        + " count=" + count, e);
+                this.resetClient();
+                int[] cachedValues = this.readCachedRange(startAddress, count);
+                if (cachedValues != null) {
+                    this.postSuccess(callback, startAddress, cachedValues);
+                } else {
+                    this.postError(callback, e);
+                }
             }
         });
     }
@@ -510,6 +576,7 @@ final class ModbusManager {
             this.postError(callback, (Exception)new IOException("register is read only"));
             return;
         }
+        this.localValues.put(spec.address, spec.clamp(value));
         this.executor.execute(() -> {
             try {
                 int encoded = spec.encode(value);
@@ -517,6 +584,13 @@ final class ModbusManager {
                 this.postSuccess(callback);
             }
             catch (Exception e) {
+                Log.e(TAG, "write failed"
+                        + " device=" + this.devicePath
+                        + " baud=" + this.baudRate
+                        + " slave=" + this.slaveId
+                        + " address=" + spec.address
+                        + " value=" + value
+                        + " fc=" + spec.writeFunctionCode, e);
                 this.resetClient();
                 this.postError(callback, e);
             }
@@ -571,6 +645,27 @@ final class ModbusManager {
         }
     }
 
+    private int decodeAddressValue(int address, int rawValue) {
+        ModbusRegisterSpec spec = ModbusTable.byAddress(address);
+        if (spec == null) {
+            return rawValue & 0xFFFF;
+        }
+        return spec.decode(rawValue);
+    }
+
+    @Nullable
+    private int[] readCachedRange(int startAddress, int count) {
+        int[] values = new int[count];
+        for (int i = 0; i < count; i++) {
+            Integer value = this.localValues.get(startAddress + i);
+            if (value == null) {
+                return null;
+            }
+            values[i] = value;
+        }
+        return values;
+    }
+
     private void postSuccess(IntCallback callback, int value) {
         this.mainHandler.post(() -> callback.onSuccess(value));
     }
@@ -587,6 +682,14 @@ final class ModbusManager {
         this.mainHandler.post(() -> callback.onError(error));
     }
 
+    private void postSuccess(RangeCallback callback, int startAddress, int[] values) {
+        this.mainHandler.post(() -> callback.onSuccess(startAddress, values));
+    }
+
+    private void postError(RangeCallback callback, Exception error) {
+        this.mainHandler.post(() -> callback.onError(error));
+    }
+
     static interface IntCallback {
         public void onSuccess(int var1);
 
@@ -595,6 +698,12 @@ final class ModbusManager {
 
     static interface VoidCallback {
         public void onSuccess();
+
+        public void onError(Exception var1);
+    }
+
+    static interface RangeCallback {
+        public void onSuccess(int startAddress, int[] values);
 
         public void onError(Exception var1);
     }
@@ -622,6 +731,7 @@ final class ModbusRtuClient {
             throw new IOException("invalid read count: " + count);
         }
         this.transport.open();
+        this.transport.discardInput();
         byte[] request = new byte[8];
         request[0] = (byte)this.slaveId;
         request[1] = (byte)functionCode;
@@ -631,7 +741,7 @@ final class ModbusRtuClient {
         request[5] = (byte)(count & 0xFF);
         this.writeCrc(request, 6);
         this.transport.write(request, 0, request.length);
-        this.sleepQuietly(25L);
+        this.transport.settleAfterWrite(request.length);
         byte[] header = new byte[3];
         this.readFully(header, 0, header.length, 1500);
         this.validateHeader(header, functionCode);
@@ -640,6 +750,9 @@ final class ModbusRtuClient {
             throw new IOException("modbus exception: " + exceptionCode);
         }
         int byteCount = header[2] & 0xFF;
+        if (byteCount != count * 2) {
+            throw new IOException("unexpected byte count: " + byteCount);
+        }
         int frameLength = 3 + byteCount + 2;
         if (frameLength > 256) {
             throw new IOException("response too large");
@@ -662,6 +775,7 @@ final class ModbusRtuClient {
 
     synchronized void writeRegister(int address, int value, int functionCode) throws IOException {
         this.transport.open();
+        this.transport.discardInput();
         byte[] request = new byte[8];
         request[0] = (byte)this.slaveId;
         request[1] = (byte)functionCode;
@@ -672,12 +786,16 @@ final class ModbusRtuClient {
         request[5] = (byte)(rawValue & 0xFF);
         this.writeCrc(request, 6);
         this.transport.write(request, 0, request.length);
-        this.sleepQuietly(25L);
+        this.transport.settleAfterWrite(request.length);
         byte[] response = new byte[8];
         this.readFully(response, 0, response.length, 1500);
         this.validateHeader(response, functionCode);
         this.verifyCrc(response, response.length);
-        if (response[1] != request[1] || response[2] != request[2] || response[3] != request[3]) {
+        if (response[1] != request[1]
+                || response[2] != request[2]
+                || response[3] != request[3]
+                || response[4] != request[4]
+                || response[5] != request[5]) {
             throw new IOException("modbus write echo mismatch");
         }
     }
@@ -760,11 +878,29 @@ final class ModbusRtuClient {
 final class ModbusSerialTransport
 implements ModbusTransport {
     private static final String TAG = "ModbusSerialTransport";
+    private static final boolean DEBUG_FRAMES = true;
     private static final int READ_TIMEOUT_MS = 1500;
     private static final int WRITE_TIMEOUT_MS = 1000;
+    private static final int BITS_PER_CHAR = 10;
+    private static final int PRE_WRITE_DISCARD_WINDOW_MS = 1;
+    private static final int POST_WRITE_DISCARD_WINDOW_MS = 1;
+    private static final int POST_WRITE_MARGIN_MS = 2;
+    private static final int DATA_BITS = 8;
+    private static final int STOP_BITS = 1;
+    private static final int PARITY = 0;
+    private static final int FLOW_CONTROL = 0;
+    private static final int OPEN_FLAGS = 0;
+    private static final String RS485_DIRECTION_PATH = "/sys/class/gpio/gpio239/value";
+    private static final String RS485_DIRECTION_MODE_PATH = "/sys/class/gpio/gpio239/direction";
+    private static final String RS485_TX_VALUE = "1";
+    private static final String RS485_RX_VALUE = "0";
+    @Nullable
+    private static Method nativeOpenMethod;
     private final String devicePath;
     private final int baudRate;
+    private final SerialPortHelper serialPortHelper = new SerialPortHelper();
     private FileDescriptor fileDescriptor;
+    private boolean directionControlAvailable;
 
     ModbusSerialTransport(String devicePath, int baudRate) {
         this.devicePath = devicePath;
@@ -776,11 +912,13 @@ implements ModbusTransport {
         if (this.isOpen()) {
             return;
         }
-        this.applyBestEffortSerialConfig();
         try {
-            this.fileDescriptor = Os.open((String)this.devicePath, (int)(OsConstants.O_RDWR | OsConstants.O_NOCTTY | OsConstants.O_NONBLOCK), (int)0);
-        }
-        catch (ErrnoException e) {
+            this.applyBestEffortSerialConfig();
+            this.fileDescriptor = this.openWithNativeDriver();
+            this.prepareDirectionControl();
+            this.setReceiveMode();
+            Log.i(TAG, "opened serial port " + this.devicePath + " @" + baudRate);
+        } catch (Exception e) {
             throw new IOException("open serial port failed: " + this.devicePath, e);
         }
     }
@@ -788,20 +926,30 @@ implements ModbusTransport {
     @Override
     public synchronized int read(byte[] buffer, int offset, int length, int timeoutMs) throws IOException {
         this.ensureOpen();
-        long deadline = System.currentTimeMillis() + (long)Math.max(1, timeoutMs > 0 ? timeoutMs : 1500);
+        this.setReceiveMode();
+        long deadline = System.currentTimeMillis() + (long)Math.max(1, timeoutMs > 0 ? timeoutMs : READ_TIMEOUT_MS);
         int total = 0;
         while (total < length) {
             int waitMs = (int)Math.max(1L, deadline - System.currentTimeMillis());
             if (!this.waitReadable(waitMs)) {
+                if (DEBUG_FRAMES) {
+                    Log.d(TAG, "read timeout waiting for " + length + " bytes, received=" + total);
+                }
                 throw new IOException("serial read timeout");
             }
             try {
-                int read = Os.read((FileDescriptor)this.fileDescriptor, (byte[])buffer, (int)(offset + total), (int)(length - total));
-                if (read <= 0) continue;
+                int read = Os.read(this.fileDescriptor, buffer, offset + total, length - total);
+                if (read <= 0) {
+                    continue;
+                }
+                if (DEBUG_FRAMES) {
+                    Log.d(TAG, "received " + read + " bytes: " + toHex(buffer, offset + total, read));
+                }
                 total += read;
-            }
-            catch (ErrnoException e) {
-                if (e.errno == OsConstants.EAGAIN) continue;
+            } catch (ErrnoException e) {
+                if (e.errno == OsConstants.EAGAIN) {
+                    continue;
+                }
                 throw new IOException("serial read failed", e);
             }
         }
@@ -811,17 +959,20 @@ implements ModbusTransport {
     @Override
     public synchronized void write(byte[] buffer, int offset, int length) throws IOException {
         this.ensureOpen();
-        long deadline = System.currentTimeMillis() + 1000L;
+        this.setTransmitMode();
+        long deadline = System.currentTimeMillis() + WRITE_TIMEOUT_MS;
         int written = 0;
         while (written < length) {
             try {
-                int count = Os.write((FileDescriptor)this.fileDescriptor, (byte[])buffer, (int)(offset + written), (int)(length - written));
+                int count = Os.write(this.fileDescriptor, buffer, offset + written, length - written);
                 if (count > 0) {
+                    if (DEBUG_FRAMES) {
+                        Log.d(TAG, "sent " + count + " bytes: " + toHex(buffer, offset + written, count));
+                    }
                     written += count;
                     continue;
                 }
-            }
-            catch (ErrnoException e) {
+            } catch (ErrnoException e) {
                 if (e.errno == OsConstants.EAGAIN) {
                     if (System.currentTimeMillis() > deadline) {
                         throw new IOException("serial write timeout");
@@ -831,9 +982,24 @@ implements ModbusTransport {
                 }
                 throw new IOException("serial write failed", e);
             }
-            if (System.currentTimeMillis() <= deadline) continue;
-            throw new IOException("serial write timeout");
+            if (System.currentTimeMillis() > deadline) {
+                throw new IOException("serial write timeout");
+            }
         }
+    }
+
+    @Override
+    public synchronized void discardInput() throws IOException {
+        this.ensureOpen();
+        this.setReceiveMode();
+        this.discardReadableBytes(PRE_WRITE_DISCARD_WINDOW_MS, "before tx");
+    }
+
+    @Override
+    public synchronized void settleAfterWrite(int byteCount) throws IOException {
+        this.ensureOpen();
+        this.sleepQuietly(this.estimateTransmitMillis(byteCount) + POST_WRITE_MARGIN_MS);
+        this.setReceiveMode();
     }
 
     @Override
@@ -847,12 +1013,11 @@ implements ModbusTransport {
             return;
         }
         try {
-            Os.close((FileDescriptor)this.fileDescriptor);
-        }
-        catch (ErrnoException e) {
+            Os.close(this.fileDescriptor);
+        } catch (ErrnoException e) {
             throw new IOException("close serial port failed", e);
-        }
-        finally {
+        } finally {
+            this.setReceiveMode();
             this.fileDescriptor = null;
         }
     }
@@ -866,27 +1031,66 @@ implements ModbusTransport {
     private boolean waitReadable(int timeoutMs) throws IOException {
         StructPollfd pollFd = new StructPollfd();
         pollFd.fd = this.fileDescriptor;
-        pollFd.events = (short)OsConstants.POLLIN;
+        pollFd.events = (short) OsConstants.POLLIN;
         try {
-            int result = Os.poll((StructPollfd[])new StructPollfd[]{pollFd}, (int)timeoutMs);
+            int result = Os.poll(new StructPollfd[]{pollFd}, timeoutMs);
             return result > 0 && (pollFd.revents & OsConstants.POLLIN) != 0;
-        }
-        catch (ErrnoException e) {
+        } catch (ErrnoException e) {
             throw new IOException("serial poll failed", e);
         }
     }
 
-    private void applyBestEffortSerialConfig() {
-        String[] commands = new String[]{"stty", "-F", this.devicePath, String.valueOf(this.baudRate), "cs8", "-parenb", "-cstopb", "-ixon", "-ixoff", "-crtscts", "raw"};
-        String[] altCommands = new String[]{"toybox", "stty", "-F", this.devicePath, String.valueOf(this.baudRate), "cs8", "-parenb", "-cstopb", "-ixon", "-ixoff", "-crtscts", "raw"};
-        if (!this.runCommand(commands) && !this.runCommand(altCommands)) {
-            Log.w((String)TAG, (String)("best-effort serial config skipped for " + this.devicePath));
+    private FileDescriptor openWithNativeDriver() throws Exception {
+        Method method = nativeOpenMethod;
+        if (method == null) {
+            method = SerialPortHelper.class.getDeclaredMethod("nativeOpen",
+                    String.class, int.class, int.class, int.class, int.class, int.class, int.class);
+            method.setAccessible(true);
+            nativeOpenMethod = method;
+        }
+        Object result = method.invoke(null, this.devicePath, this.baudRate, STOP_BITS, DATA_BITS,
+                PARITY, FLOW_CONTROL, OPEN_FLAGS);
+        if (!(result instanceof FileDescriptor)) {
+            throw new IOException("nativeOpen returned invalid descriptor");
+        }
+        return (FileDescriptor) result;
+    }
+
+    private void discardReadableBytes(int windowMs, String reason) throws IOException {
+        byte[] scratch = new byte[256];
+        int total = 0;
+        while (this.waitReadable(windowMs)) {
+            try {
+                int read = Os.read(this.fileDescriptor, scratch, 0, scratch.length);
+                if (read <= 0) {
+                    break;
+                }
+                total += read;
+                if (DEBUG_FRAMES) {
+                    Log.d(TAG, "discarded " + read + " bytes " + reason + ": " + toHex(scratch, 0, read));
+                }
+            } catch (ErrnoException e) {
+                if (e.errno == OsConstants.EAGAIN) {
+                    break;
+                }
+                throw new IOException("serial discard failed", e);
+            }
+        }
+        if (DEBUG_FRAMES && total > 0) {
+            Log.d(TAG, "discarded total " + total + " buffered bytes " + reason);
         }
     }
 
-    /*
-     * WARNING - Removed try catching itself - possible behaviour change.
-     */
+    private void applyBestEffortSerialConfig() {
+        String[] commands = new String[]{"stty", "-F", this.devicePath, String.valueOf(this.baudRate),
+                "cs8", "-parenb", "-cstopb", "-ixon", "-ixoff", "-crtscts", "raw"};
+        String[] altCommands = new String[]{"toybox", "stty", "-F", this.devicePath, String.valueOf(this.baudRate),
+                "cs8", "-parenb", "-cstopb", "-ixon", "-ixoff", "-crtscts", "raw"};
+        if (!this.runCommand(commands) && !this.runCommand(altCommands)) {
+            Log.w(TAG, "best-effort serial config skipped for " + this.devicePath);
+        }
+    }
+
     private boolean runCommand(String[] command) {
         Process process = null;
         try {
@@ -894,24 +1098,18 @@ implements ModbusTransport {
             boolean finished = process.waitFor(2L, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroy();
-                boolean bl = false;
-                return bl;
+                return false;
             }
             int exit = process.exitValue();
             if (exit != 0) {
                 byte[] output = this.readFully(process.getInputStream());
-                Log.w((String)TAG, (String)new String(output, StandardCharsets.UTF_8));
-                boolean bl = false;
-                return bl;
+                Log.w(TAG, new String(output, StandardCharsets.UTF_8));
+                return false;
             }
-            boolean bl = true;
-            return bl;
-        }
-        catch (Exception ignored) {
-            boolean bl = false;
-            return bl;
-        }
-        finally {
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        } finally {
             if (process != null) {
                 process.destroy();
             }
@@ -919,27 +1117,76 @@ implements ModbusTransport {
     }
 
     private byte[] readFully(InputStream inputStream) throws IOException {
-        try (InputStream in = inputStream;){
-            byte[] byArray;
-            try (ByteArrayOutputStream out = new ByteArrayOutputStream();){
-                int read;
-                byte[] buffer = new byte[256];
-                while ((read = in.read(buffer)) != -1) {
-                    out.write(buffer, 0, read);
-                }
-                byArray = out.toByteArray();
+        try (InputStream in = inputStream; ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[256];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
             }
-            return byArray;
+            return out.toByteArray();
+        }
+    }
+
+    private void prepareDirectionControl() {
+        File valueFile = new File(RS485_DIRECTION_PATH);
+        this.directionControlAvailable = valueFile.exists() && valueFile.canWrite();
+        if (!this.directionControlAvailable) {
+            return;
+        }
+        File directionFile = new File(RS485_DIRECTION_MODE_PATH);
+        if (directionFile.canWrite()) {
+            this.writeSysfsQuietly(RS485_DIRECTION_MODE_PATH, "out");
+        }
+        Log.i(TAG, "RS485 direction control enabled: " + RS485_DIRECTION_PATH);
+    }
+
+    private void setTransmitMode() {
+        if (this.directionControlAvailable) {
+            this.writeSysfsQuietly(RS485_DIRECTION_PATH, RS485_TX_VALUE);
+        }
+    }
+
+    private void setReceiveMode() {
+        if (this.directionControlAvailable) {
+            this.writeSysfsQuietly(RS485_DIRECTION_PATH, RS485_RX_VALUE);
+        }
+    }
+
+    private void writeSysfsQuietly(String path, String value) {
+        try (FileOutputStream output = new FileOutputStream(path, false)) {
+            output.write(value.getBytes(StandardCharsets.US_ASCII));
+            output.flush();
+        } catch (IOException e) {
+            Log.w(TAG, "write sysfs failed: " + path, e);
         }
     }
 
     private void sleepQuietly(long millis) {
         try {
             Thread.sleep(millis);
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private long estimateTransmitMillis(int byteCount) {
+        long baud = Math.max(1, this.baudRate);
+        long bits = (long)Math.max(1, byteCount) * BITS_PER_CHAR;
+        return Math.max(1L, (bits * 1000L + baud - 1L) / baud);
+    }
+
+    private static String toHex(byte[] buffer, int offset, int length) {
+        if (buffer == null || length <= 0) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder(length * 3);
+        for (int i = 0; i < length; ++i) {
+            if (i > 0) {
+                builder.append(' ');
+            }
+            builder.append(String.format(Locale.US, "%02X", buffer[offset + i] & 0xFF));
+        }
+        return builder.toString();
     }
 }
 
@@ -951,6 +1198,10 @@ extends Closeable {
     public int read(byte[] var1, int var2, int var3, int var4) throws IOException;
 
     public void write(byte[] var1, int var2, int var3) throws IOException;
+
+    public void discardInput() throws IOException;
+
+    public void settleAfterWrite(int var1) throws IOException;
 
     public boolean isOpen();
 }
