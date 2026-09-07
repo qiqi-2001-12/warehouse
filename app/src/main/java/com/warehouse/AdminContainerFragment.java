@@ -24,6 +24,8 @@ public class AdminContainerFragment extends Fragment {
         factoryTab = root.findViewById(R.id.tab_factory);
         contentId = R.id.admin_content;
 
+        ScreenFit.bind(root, root.findViewById(R.id.admin_shell));
+
         back.setOnClickListener(v -> getParentFragmentManager().popBackStack());
         faultTab.setOnClickListener(v -> showPage(new FaultFragment(), faultTab));
         factoryTab.setOnClickListener(v -> showPage(new FactoryParamsFragment(), factoryTab));

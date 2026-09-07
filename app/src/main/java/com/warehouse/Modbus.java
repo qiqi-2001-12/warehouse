@@ -462,7 +462,7 @@ final class ModbusUi {
 
 final class ModbusManager {
     private static final String TAG = "ModbusManager";
-    private static final String DEFAULT_DEVICE_PATH = "/dev/ttyAS3";
+    private static final String DEFAULT_DEVICE_PATH = "/dev/ttyS1";
     private static final int DEFAULT_BAUD_RATE = 9600;
     private static final int DEFAULT_SLAVE_ID = 1;
     private static final ModbusManager INSTANCE = new ModbusManager();

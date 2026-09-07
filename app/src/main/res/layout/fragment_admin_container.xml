@@ -7,8 +7,8 @@
 
     <LinearLayout
         android:id="@+id/admin_shell"
-        android:layout_width="88mm"
-        android:layout_height="88mm"
+        android:layout_width="456px"
+        android:layout_height="468px"
         android:layout_gravity="center"
         android:orientation="vertical"
         android:paddingLeft="18dp"
