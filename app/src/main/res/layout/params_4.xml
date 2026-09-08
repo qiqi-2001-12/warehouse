@@ -4,279 +4,268 @@
     android:layout_height="match_parent"
     android:gravity="center"
     android:orientation="vertical"
-    android:paddingLeft="4dp"
-    android:paddingTop="4dp"
-    android:paddingRight="4dp"
-    android:paddingBottom="4dp">
+    android:padding="0dp">
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:paddingLeft="10dp"
-        android:paddingRight="10dp">
+        android:orientation="vertical">
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
+            android:layout_width="wrap_content"
+            android:layout_height="56dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="280dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:gravity="end|center_vertical"
                 android:includeFontPadding="false"
                 android:singleLine="true"
                 android:text="&#x8282;&#x80FD;&#x6863;PM2.5&#x4E0A;&#x9650;"
                 android:textColor="#E0F6F8"
-                android:textSize="20sp"
+                android:textSize="21sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param4_energy_pm25_limit_value"
-                android:layout_width="78dp"
-                android:layout_height="46dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="86dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="16dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="27sp"
+                android:textSize="29sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="66dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="12dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="ug/m&#x00B3;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="280dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:gravity="end|center_vertical"
                 android:includeFontPadding="false"
                 android:singleLine="true"
                 android:text="&#x8212;&#x9002;&#x6863;PM2.5&#x4E0A;&#x9650;"
                 android:textColor="#E0F6F8"
-                android:textSize="20sp"
+                android:textSize="21sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param4_comfort_pm25_limit_value"
-                android:layout_width="78dp"
-                android:layout_height="46dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="86dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="16dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="27sp"
+                android:textSize="29sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="66dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="12dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="ug/m&#x00B3;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="280dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:gravity="end|center_vertical"
                 android:includeFontPadding="false"
                 android:singleLine="true"
                 android:text="1&#x5206;&#x949F;PM2.5&#x7A81;&#x589E;&#x5224;&#x5B9A;&#x503C;"
                 android:textColor="#E0F6F8"
-                android:textSize="20sp"
+                android:textSize="21sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param4_pm25_rise_limit_value"
-                android:layout_width="78dp"
-                android:layout_height="46dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="86dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="16dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="27sp"
+                android:textSize="29sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="66dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="12dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="ug/m&#x00B3;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="280dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:gravity="end|center_vertical"
                 android:includeFontPadding="false"
                 android:singleLine="true"
                 android:text="&#x8282;&#x80FD;&#x6863;CO2&#x4E0A;&#x9650;"
                 android:textColor="#E0F6F8"
-                android:textSize="20sp"
+                android:textSize="21sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param4_energy_co2_limit_value"
-                android:layout_width="78dp"
-                android:layout_height="46dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="86dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="16dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="27sp"
+                android:textSize="29sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="66dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="12dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="ppm"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="280dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:gravity="end|center_vertical"
                 android:includeFontPadding="false"
                 android:singleLine="true"
                 android:text="&#x8212;&#x9002;&#x6863;CO2&#x4E0A;&#x9650;"
                 android:textColor="#E0F6F8"
-                android:textSize="20sp"
+                android:textSize="21sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param4_comfort_co2_limit_value"
-                android:layout_width="78dp"
-                android:layout_height="46dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="86dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="16dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="27sp"
+                android:textSize="29sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="66dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="12dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="ppm"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="280dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:gravity="end|center_vertical"
                 android:includeFontPadding="false"
                 android:singleLine="true"
                 android:text="1&#x5206;&#x949F;CO2&#x7A81;&#x589E;&#x5224;&#x5B9A;&#x503C;"
                 android:textColor="#E0F6F8"
-                android:textSize="20sp"
+                android:textSize="21sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param4_co2_rise_limit_value"
-                android:layout_width="78dp"
-                android:layout_height="46dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="86dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="16dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="27sp"
+                android:textSize="29sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="66dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="12dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="ppm"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>

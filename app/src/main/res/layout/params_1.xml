@@ -4,10 +4,7 @@
     android:layout_height="match_parent"
     android:gravity="center_vertical"
     android:orientation="vertical"
-    android:paddingLeft="4dp"
-    android:paddingTop="4dp"
-    android:paddingRight="4dp"
-    android:paddingBottom="4dp">
+    android:padding="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -34,42 +31,43 @@
                 android:singleLine="true"
                 android:text="&#x73AF;&#x5883;&#x6E29;&#x5EA6;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param1_env_temp_value"
-                android:layout_width="64dp"
-                android:layout_height="38dp"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="22sp"
+                android:textSize="25sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:layout_width="30dp"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="&#x2103;"
                 android:textColor="#E0F6F8"
-                android:textSize="15sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <Space
-            android:layout_width="6dp"
+            android:layout_width="30dp"
             android:layout_height="1dp" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -83,31 +81,31 @@
                 android:singleLine="true"
                 android:text="&#x9AD8;&#x538B;&#x538B;&#x529B;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param1_high_pressure_value"
-                android:layout_width="64dp"
-                android:layout_height="38dp"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="22sp"
+                android:textSize="25sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:layout_width="30dp"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="Bar"
                 android:textColor="#E0F6F8"
-                android:textSize="15sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
@@ -138,42 +136,43 @@
                 android:singleLine="true"
                 android:text="&#x6392;&#x6C14;&#x6E29;&#x5EA6;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param1_exhaust_temp_value"
-                android:layout_width="64dp"
-                android:layout_height="38dp"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="22sp"
+                android:textSize="25sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:layout_width="30dp"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="&#x2103;"
                 android:textColor="#E0F6F8"
-                android:textSize="15sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <Space
-            android:layout_width="6dp"
+            android:layout_width="30dp"
             android:layout_height="1dp" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -187,31 +186,31 @@
                 android:singleLine="true"
                 android:text="&#x4F4E;&#x538B;&#x538B;&#x529B;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param1_low_pressure_value"
-                android:layout_width="64dp"
-                android:layout_height="38dp"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="22sp"
+                android:textSize="25sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:layout_width="30dp"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="Bar"
                 android:textColor="#E0F6F8"
-                android:textSize="15sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
@@ -229,6 +228,7 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -242,42 +242,43 @@
                 android:singleLine="true"
                 android:text="&#x5438;&#x6C14;&#x6E29;&#x5EA6;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param1_suction_temp_value"
-                android:layout_width="64dp"
-                android:layout_height="38dp"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="22sp"
+                android:textSize="25sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:layout_width="30dp"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="&#x2103;"
                 android:textColor="#E0F6F8"
-                android:textSize="15sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <Space
-            android:layout_width="6dp"
+            android:layout_width="30dp"
             android:layout_height="1dp" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -291,31 +292,31 @@
                 android:singleLine="true"
                 android:text="&#x5438;&#x6C14;&#x8FC7;&#x70ED;&#x5EA6;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param1_suction_superheat_value"
-                android:layout_width="64dp"
-                android:layout_height="38dp"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="22sp"
+                android:textSize="25sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:layout_width="30dp"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="&#x2103;"
                 android:textColor="#E0F6F8"
-                android:textSize="15sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
@@ -346,42 +347,43 @@
                 android:singleLine="true"
                 android:text="&#x84B8;&#x53D1;&#x6E29;&#x5EA6;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param1_evaporation_temp_value"
-                android:layout_width="64dp"
-                android:layout_height="38dp"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="22sp"
+                android:textSize="25sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:layout_width="30dp"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="&#x2103;"
                 android:textColor="#E0F6F8"
-                android:textSize="15sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <Space
-            android:layout_width="6dp"
+            android:layout_width="30dp"
             android:layout_height="1dp" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -395,31 +397,31 @@
                 android:singleLine="true"
                 android:text="&#x6392;&#x6C14;&#x8FC7;&#x70ED;&#x5EA6;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param1_exhaust_superheat_value"
-                android:layout_width="64dp"
-                android:layout_height="38dp"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="22sp"
+                android:textSize="25sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:layout_width="30dp"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="&#x2103;"
                 android:textColor="#E0F6F8"
-                android:textSize="15sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
@@ -450,36 +452,36 @@
                 android:singleLine="true"
                 android:text="&#x51B7;&#x51DD;&#x6E29;&#x5EA6;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param1_condensing_temp_value"
-                android:layout_width="64dp"
-                android:layout_height="38dp"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="22sp"
+                android:textSize="25sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:layout_width="30dp"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="&#x2103;"
                 android:textColor="#E0F6F8"
-                android:textSize="15sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <Space
-            android:layout_width="6dp"
+            android:layout_width="30dp"
             android:layout_height="1dp" />
 
         <LinearLayout
@@ -499,31 +501,31 @@
                 android:singleLine="true"
                 android:text="&#x5BA4;&#x5916;&#x76D8;&#x7BA1;&#x6E29;&#x5EA6;"
                 android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/param1_outdoor_coil_temp_value"
-                android:layout_width="64dp"
-                android:layout_height="38dp"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/factory_param_value_bg"
                 android:gravity="center"
                 android:includeFontPadding="false"
                 android:text="--"
                 android:textColor="#191C34"
-                android:textSize="22sp"
+                android:textSize="25sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:layout_width="30dp"
+                android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:gravity="start|center_vertical"
                 android:includeFontPadding="false"
                 android:text="&#x2103;"
                 android:textColor="#E0F6F8"
-                android:textSize="15sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>

@@ -14,6 +14,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -192,6 +193,8 @@ public class HomeFragment extends Fragment {
         private FrameLayout switchButton;
         private TextView switchButtonText;
         private TextView autoButton;
+        private TextView leftHumidityModeButton;
+        private TextView rightHumidityModeButton;
         private TextView humidityModeValue;
         private TextView smartModeButton;
         private TextView supplyModeButton;
@@ -201,7 +204,7 @@ public class HomeFragment extends Fragment {
         private TextView indoorCo2ValueView;
         private TextView indoorAbsoluteHumidityValueView;
 
-        private static final String[] SUPPLY_MODES = {"自动", "节能", "舒适", "强力"};
+        private static final String[] SUPPLY_MODES = {"关闭", "节能", "舒适", "强力"};
         private static final String[] HUMIDITY_MODES = {"除湿", "加湿", "通风", "低温加湿", "制热", "制冷"};
 
         @Nullable
@@ -267,6 +270,8 @@ public class HomeFragment extends Fragment {
             switchButton = null;
             switchButtonText = null;
             autoButton = null;
+            leftHumidityModeButton = null;
+            rightHumidityModeButton = null;
             humidityModeValue = null;
             smartModeButton = null;
             supplyModeButton = null;
@@ -356,7 +361,7 @@ public class HomeFragment extends Fragment {
                 smartModeEnabled = value == 1;
                 refreshSmartButtons();
             }, this::onStatePollReadFinished);
-            refreshState(159, value -> {
+            refreshState(996, value -> {
                 supplyModeIndex = clampIndex(value, SUPPLY_MODES.length);
                 refreshSupplyButtons();
             }, this::onStatePollReadFinished);
@@ -370,7 +375,7 @@ public class HomeFragment extends Fragment {
             int reads = 0;
             reads += hasReadableControlStateRange() ? 1 : 0;
             reads += canReadAddress(100) ? 1 : 0;
-            reads += canReadAddress(159) ? 1 : 0;
+            reads += canReadAddress(996) ? 1 : 0;
             return reads;
         }
 
@@ -641,9 +646,9 @@ public class HomeFragment extends Fragment {
             LinearLayout.LayoutParams modeClusterParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             module.addView(modeCluster, modeClusterParams);
 
-            TextView leftBracket = createBracketButton(context, "<");
-            leftBracket.setOnClickListener(v -> cycleHumidityMode(-1));
-            modeCluster.addView(leftBracket, AdminUi.lp(AdminUi.dp(context, 30), AdminUi.dp(context, 40)));
+            leftHumidityModeButton = createBracketButton(context, "<");
+            leftHumidityModeButton.setOnClickListener(v -> cycleHumidityMode(-1));
+            modeCluster.addView(leftHumidityModeButton, AdminUi.lp(AdminUi.dp(context, 30), AdminUi.dp(context, 40)));
 
             humidityModeValue = AdminUi.text(context, getHumidityModeText(), 22, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
             humidityModeValue.setGravity(Gravity.CENTER_VERTICAL);
@@ -652,9 +657,9 @@ public class HomeFragment extends Fragment {
             humidityModeValueParams.rightMargin = AdminUi.dp(context, 6);
             modeCluster.addView(humidityModeValue, humidityModeValueParams);
 
-            TextView rightBracket = createBracketButton(context, ">");
-            rightBracket.setOnClickListener(v -> cycleHumidityMode(1));
-            modeCluster.addView(rightBracket, AdminUi.lp(AdminUi.dp(context, 40), AdminUi.dp(context, 40)));
+            rightHumidityModeButton = createBracketButton(context, ">");
+            rightHumidityModeButton.setOnClickListener(v -> cycleHumidityMode(1));
+            modeCluster.addView(rightHumidityModeButton, AdminUi.lp(AdminUi.dp(context, 40), AdminUi.dp(context, 40)));
 
             return module;
         }
@@ -698,13 +703,6 @@ public class HomeFragment extends Fragment {
                 }));
             } else {
                 supplyModeButton = button;
-                button.setOnClickListener(v -> {
-                    int next = (supplyModeIndex + 1) % SUPPLY_MODES.length;
-                    writeIntValue(159, next, value -> {
-                        supplyModeIndex = clampIndex(value, SUPPLY_MODES.length);
-                        refreshSupplyButtons();
-                    });
-                });
             }
         }
 
@@ -718,12 +716,12 @@ public class HomeFragment extends Fragment {
 
         private TextView createSupplyModeButton(Context context, String text) {
             TextView button = AdminUi.text(context, text, 17, AdminUi.ACCENT, Typeface.BOLD);
-            button.setBackgroundResource("自动".equals(text)
+            button.setBackgroundResource("关闭".equals(text)
                     ? R.drawable.humidity_switch_on_bg
                     : R.drawable.humidity_switch_off_bg);
-            button.setTextColor("自动".equals(text) ? AdminUi.PAGE_BG : AdminUi.ACCENT);
-            button.setClickable(true);
-            button.setFocusable(true);
+            button.setTextColor("关闭".equals(text) ? AdminUi.PAGE_BG : AdminUi.ACCENT);
+            button.setClickable(false);
+            button.setFocusable(false);
             return button;
         }
 
@@ -748,6 +746,9 @@ public class HomeFragment extends Fragment {
         }
 
         private void cycleHumidityMode(int delta) {
+            if (humidityAutoMode) {
+                return;
+            }
             int length = HUMIDITY_MODES.length;
             int next = (humidityModeIndex + delta + length) % length;
             writeIntValue(513, next, value -> {
@@ -763,6 +764,22 @@ public class HomeFragment extends Fragment {
                 autoButton.setBackgroundResource(
                         humidityAutoMode ? R.drawable.humidity_switch_on_bg : R.drawable.humidity_switch_off_bg);
             }
+            setHumidityModeButtonsEnabled(!humidityAutoMode);
+        }
+
+        private void setHumidityModeButtonsEnabled(boolean enabled) {
+            setHumidityModeButtonEnabled(leftHumidityModeButton, enabled);
+            setHumidityModeButtonEnabled(rightHumidityModeButton, enabled);
+        }
+
+        private void setHumidityModeButtonEnabled(TextView button, boolean enabled) {
+            if (button == null) {
+                return;
+            }
+            button.setEnabled(enabled);
+            button.setClickable(enabled);
+            button.setFocusable(enabled);
+            button.setAlpha(enabled ? 1f : 0.45f);
         }
 
         private void refreshHumidityModeValue() {
@@ -784,10 +801,10 @@ public class HomeFragment extends Fragment {
             if (supplyModeButton != null) {
                 String text = getSupplyModeText();
                 supplyModeButton.setText(text);
-                supplyModeButton.setBackgroundResource("自动".equals(text)
+                supplyModeButton.setBackgroundResource("关闭".equals(text)
                         ? R.drawable.humidity_switch_on_bg
                         : R.drawable.humidity_switch_off_bg);
-                supplyModeButton.setTextColor("自动".equals(text) ? AdminUi.PAGE_BG : AdminUi.ACCENT);
+                supplyModeButton.setTextColor("关闭".equals(text) ? AdminUi.PAGE_BG : AdminUi.ACCENT);
             }
         }
 
@@ -861,6 +878,8 @@ public class HomeFragment extends Fragment {
         private TextView supplyAirHumidityValueView;
         private TextView freshAirAbsoluteHumidityValueView;
         private TextView supplyAirAbsoluteHumidityValueView;
+        private ProgressBar filterLifeProgressBar;
+        private TextView filterLifeValueView;
 
         @Override
         public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -888,7 +907,8 @@ public class HomeFragment extends Fragment {
             }
             if (tableHost != null) {
                 tableHost.removeAllViews();
-                tableHost.addView(buildSmartAirTable(context));
+                tableHost.addView(buildSmartAirTable(context),
+                        AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             }
             if (filterHost != null) {
                 filterHost.removeAllViews();
@@ -922,6 +942,8 @@ public class HomeFragment extends Fragment {
             supplyAirHumidityValueView = null;
             freshAirAbsoluteHumidityValueView = null;
             supplyAirAbsoluteHumidityValueView = null;
+            filterLifeProgressBar = null;
+            filterLifeValueView = null;
             super.onDestroyView();
         }
 
@@ -975,6 +997,7 @@ public class HomeFragment extends Fragment {
             refreshSettingRange();
             refreshSettingValue(supplyValueView, 15, value -> supplySetting = value);
             refreshSmartAirRange();
+            refreshFilterLife();
         }
 
         private int countSmartAirReads() {
@@ -982,6 +1005,7 @@ public class HomeFragment extends Fragment {
             reads += hasReadableSettingRange() ? 1 : 0;
             reads += canReadValue(supplyValueView, 15) ? 1 : 0;
             reads += hasReadableSmartAirRange() ? 1 : 0;
+            reads += hasReadableFilterLife() ? 1 : 0;
             return reads;
         }
 
@@ -997,6 +1021,12 @@ public class HomeFragment extends Fragment {
                     || canReadValue(supplyAirHumidityValueView, 503)
                     || canReadValue(freshAirAbsoluteHumidityValueView, 506)
                     || canReadValue(supplyAirAbsoluteHumidityValueView, 507);
+        }
+
+        private boolean hasReadableFilterLife() {
+            ModbusRegisterSpec spec = ModbusTable.byAddress(538);
+            return filterLifeProgressBar != null && filterLifeValueView != null
+                    && spec != null && spec.canRead();
         }
 
         private boolean canReadValue(TextView view, int address) {
@@ -1086,6 +1116,42 @@ public class HomeFragment extends Fragment {
             return 1;
         }
 
+        private int refreshFilterLife() {
+            if (!hasReadableFilterLife()) {
+                return 0;
+            }
+            ModbusRegisterSpec spec = ModbusTable.byAddress(538);
+            ModbusManager.get(requireContext()).read(spec, new ModbusManager.IntCallback() {
+                @Override
+                public void onSuccess(int value) {
+                    updateFilterLife(value);
+                    onPollReadFinished();
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    if (filterLifeProgressBar != null) {
+                        filterLifeProgressBar.setProgress(0);
+                    }
+                    if (filterLifeValueView != null) {
+                        filterLifeValueView.setText(VALUE_PLACEHOLDER);
+                    }
+                    onPollReadFinished();
+                }
+            });
+            return 1;
+        }
+
+        private void updateFilterLife(int value) {
+            int percentage = Math.max(0, Math.min(100, value));
+            if (filterLifeProgressBar != null) {
+                filterLifeProgressBar.setProgress(percentage);
+            }
+            if (filterLifeValueView != null) {
+                filterLifeValueView.setText(percentage + "%");
+            }
+        }
+
         private void updateSmartAirValue(TextView view, int address, int startAddress, int[] values) {
             if (view == null) {
                 return;
@@ -1139,17 +1205,20 @@ public class HomeFragment extends Fragment {
             ValueTableRow temperatureRow = buildValueTableRow(context, "温度", VALUE_PLACEHOLDER, "℃", "温度", VALUE_PLACEHOLDER, "℃");
             freshAirTemperatureValueView = temperatureRow.leftValueView;
             supplyAirTemperatureValueView = temperatureRow.rightValueView;
-            table.addView(temperatureRow.container, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 54)));
+            table.addView(temperatureRow.container,
+                    AdminUi.weightedLp(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
             ValueTableRow humidityRow = buildValueTableRow(context, "湿度", VALUE_PLACEHOLDER, "%", "湿度", VALUE_PLACEHOLDER, "%");
             freshAirHumidityValueView = humidityRow.leftValueView;
             supplyAirHumidityValueView = humidityRow.rightValueView;
-            table.addView(humidityRow.container, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 54)));
+            table.addView(humidityRow.container,
+                    AdminUi.weightedLp(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
             table.addView(dividerLine(context), AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1)));
             ValueTableRow absoluteHumidityRow = buildValueTableRow(context, "含湿量", VALUE_PLACEHOLDER, "g/kg", "含湿量", VALUE_PLACEHOLDER, "g/kg");
             freshAirAbsoluteHumidityValueView = absoluteHumidityRow.leftValueView;
             supplyAirAbsoluteHumidityValueView = absoluteHumidityRow.rightValueView;
-            table.addView(absoluteHumidityRow.container, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 54)));
+            table.addView(absoluteHumidityRow.container,
+                    AdminUi.weightedLp(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
             return table;
         }
 
@@ -1448,7 +1517,7 @@ public class HomeFragment extends Fragment {
             LinearLayout root = AdminUi.column(context);
             root.setGravity(Gravity.CENTER_HORIZONTAL);
             root.setPadding(AdminUi.dp(context, 12), AdminUi.dp(context, 12), AdminUi.dp(context, 12), AdminUi.dp(context, 12));
-            root.setBackground(AdminUi.bg(AdminUi.PANEL_BG, 8, AdminUi.PANEL_STROKE, 1, context));
+            root.setBackground(AdminUi.bg(Color.BLACK, 8, AdminUi.PANEL_STROKE, 1, context));
             input.setHint(INPUT_HINT_PLACEHOLDER);
 
             LinearLayout.LayoutParams inputParams = AdminUi.lp(AdminUi.mm(context, 44), ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -1469,7 +1538,8 @@ public class HomeFragment extends Fragment {
             TextView confirmButton = createDialogActionButton(context, "\u786e\u5b9a", AdminUi.PAGE_BG, AdminUi.ACCENT);
             buttonRow.addView(confirmButton, AdminUi.weightedLp(0, AdminUi.dp(context, 54), 1));
 
-            AlertDialog dialog = new AlertDialog.Builder(context)
+            AlertDialog dialog = new AlertDialog.Builder(
+                    new ContextThemeWrapper(context, R.style.BlackInputDialogTheme))
                     .setView(root)
                     .create();
             return new InputDialogParts(dialog, cancelButton, confirmButton);
@@ -1484,7 +1554,7 @@ public class HomeFragment extends Fragment {
             input.setTextColor(AdminUi.TEXT_PRIMARY);
             input.setHintTextColor(AdminUi.TEXT_SECONDARY);
             input.setTextSize(20);
-            input.setBackground(AdminUi.bg(Color.rgb(10, 38, 54), 6, Color.rgb(42, 138, 155), 1, context));
+            input.setBackground(AdminUi.bg(Color.BLACK, 6, Color.rgb(42, 138, 155), 1, context));
             input.setPadding(AdminUi.dp(context, 14), AdminUi.dp(context, 12), AdminUi.dp(context, 14), AdminUi.dp(context, 12));
             return input;
         }
@@ -1492,7 +1562,7 @@ public class HomeFragment extends Fragment {
         private void styleCompactDialog(AlertDialog dialog) {
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setBackgroundDrawable(
-                        AdminUi.bg(AdminUi.PANEL_BG, 8, AdminUi.PANEL_STROKE, 1, requireContext()));
+                        requireContext().getDrawable(R.drawable.input_dialog_black_bg));
                 dialog.getWindow().setLayout(AdminUi.mm(requireContext(), 58), ViewGroup.LayoutParams.WRAP_CONTENT);
             }
         }
@@ -1526,7 +1596,8 @@ public class HomeFragment extends Fragment {
             progressBar.setMax(100);
             progressBar.setProgress(0);
             progressBar.setProgressDrawable(context.getDrawable(R.drawable.progress_filter));
-            LinearLayout.LayoutParams progressParams = AdminUi.weightedLp(0, AdminUi.dp(context, 11), 1);
+            filterLifeProgressBar = progressBar;
+            LinearLayout.LayoutParams progressParams = AdminUi.weightedLp(0, AdminUi.dp(context, 16), 1);
             progressParams.leftMargin = AdminUi.dp(context, 8);
             progressParams.rightMargin = AdminUi.dp(context, 8);
             filterRow.addView(progressBar, progressParams);
@@ -1534,6 +1605,7 @@ public class HomeFragment extends Fragment {
             TextView progressText = AdminUi.text(context, VALUE_PLACEHOLDER, 13, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
             filterRow.addView(progressText, AdminUi.lp(AdminUi.dp(context, 40), ViewGroup.LayoutParams.WRAP_CONTENT));
             progressText.setTextSize(18);
+            filterLifeValueView = progressText;
             return filterRow;
         }
 

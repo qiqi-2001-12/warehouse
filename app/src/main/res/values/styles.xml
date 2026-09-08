@@ -6,4 +6,9 @@
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">@color/white</item>
     </style>
+
+    <style name="BlackInputDialogTheme" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/input_dialog_black_bg</item>
+        <item name="android:colorAccent">#24C8D9</item>
+    </style>
 </resources>

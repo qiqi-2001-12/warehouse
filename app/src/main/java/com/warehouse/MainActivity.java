@@ -13,6 +13,7 @@ public class MainActivity extends AppCompatActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemBars();
+        FaultMonitor.start(getApplicationContext());
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(android.R.id.content, new HomeFragment())

@@ -41,15 +41,15 @@ public class FactoryParamsFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         LinearLayout root = AdminUi.column(requireContext());
-        root.setPadding(AdminUi.dp(requireContext(), 14), AdminUi.dp(requireContext(), 18), AdminUi.dp(requireContext(), 14), AdminUi.dp(requireContext(), 18));
-
         LinearLayout header = AdminUi.row(requireContext());
         header.setGravity(Gravity.CENTER_VERTICAL);
-        root.addView(header, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(requireContext(), 42)));
+        LinearLayout.LayoutParams headerParams = AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(requireContext(), 42));
+        headerParams.topMargin = AdminUi.dp(requireContext(), 18);
+        root.addView(header, headerParams);
 
         TextView resetFactory = AdminUi.button(requireContext(), "\u6062\u590d\u51fa\u5382\u8bbe\u7f6e");
         resetFactory.setOnClickListener(v -> writeConfirm(539));
-        header.addView(resetFactory, AdminUi.lp(AdminUi.dp(requireContext(), 120), AdminUi.dp(requireContext(), 32)));
+        header.addView(resetFactory, AdminUi.lp(AdminUi.dp(requireContext(), 144), AdminUi.dp(requireContext(), 40)));
 
         View spacer = new View(requireContext());
         LinearLayout.LayoutParams spacerParams = AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
@@ -68,8 +68,8 @@ public class FactoryParamsFragment extends Fragment {
         }
 
         pager = new ViewPager2(requireContext());
-        pager.setBackground(AdminUi.bg(AdminUi.CARD_BG, 8, AdminUi.CARD_STROKE, 1, requireContext()));
-        pager.setOffscreenPageLimit(PAGE_LAYOUTS.length);
+        pager.setBackgroundColor(AdminUi.CARD_BG);
+        pager.setOffscreenPageLimit(1);
         pager.setOverScrollMode(View.OVER_SCROLL_NEVER);
         pager.setAdapter(new FactoryParamsPagerAdapter());
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
@@ -80,7 +80,6 @@ public class FactoryParamsFragment extends Fragment {
         });
 
         LinearLayout.LayoutParams pagerParams = AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, 0);
-        pagerParams.topMargin = AdminUi.dp(requireContext(), 10);
         pagerParams.weight = 1;
         root.addView(pager, pagerParams);
 
@@ -243,6 +242,8 @@ public class FactoryParamsFragment extends Fragment {
         reads += refreshStatus(root, R.id.param2_return_air_valve_status, 951);
         reads += refreshStatus(root, R.id.param2_exhaust_fan_status, 935);
         reads += refreshValue(root, R.id.param2_compressor_freq_value, 512);
+        reads += refreshValue(root, R.id.param2_compressor_freq_max_value, 17);
+        reads += refreshValue(root, R.id.param2_compressor_freq_min_value, 16);
         reads += refreshValue(root, R.id.param2_expansion_valve_step_value, 524);
         reads += refreshValue(root, R.id.param2_condenser_fan_value, 525);
         return reads;
@@ -260,6 +261,7 @@ public class FactoryParamsFragment extends Fragment {
         reads += refreshValue(root, R.id.param3_comfort_exhaust_valve_value, 170);
         reads += refreshValue(root, R.id.param3_boost_exhaust_valve_value, 171);
         reads += refreshValue(root, R.id.param3_fresh_air_heater_max_output_value, 140);
+        reads += refreshValue(root, R.id.param3_supply_mode_button, 141);
         return reads;
     }
 
@@ -304,7 +306,9 @@ public class FactoryParamsFragment extends Fragment {
 
             @Override
             public void onError(Exception error) {
-                view.setText("--");
+                if (!(view.getTag() instanceof Integer)) {
+                    view.setText("--");
+                }
                 onPollReadFinished();
             }
         });
@@ -398,6 +402,8 @@ public class FactoryParamsFragment extends Fragment {
         bindStatus(root, R.id.param2_return_air_valve_status, 951);
         bindStatus(root, R.id.param2_exhaust_fan_status, 935);
         bindValue(root, R.id.param2_compressor_freq_value, 512);
+        bindValue(root, R.id.param2_compressor_freq_max_value, 17);
+        bindValue(root, R.id.param2_compressor_freq_min_value, 16);
         bindValue(root, R.id.param2_expansion_valve_step_value, 524);
         bindValue(root, R.id.param2_condenser_fan_value, 525);
     }
@@ -413,6 +419,36 @@ public class FactoryParamsFragment extends Fragment {
         bindValue(root, R.id.param3_comfort_exhaust_valve_value, 170);
         bindValue(root, R.id.param3_boost_exhaust_valve_value, 171);
         bindValue(root, R.id.param3_fresh_air_heater_max_output_value, 140);
+        bindSupplyModeButton(root);
+    }
+
+    private static void bindSupplyModeButton(View root) {
+        TextView button = root.findViewById(R.id.param3_supply_mode_button);
+        ModbusRegisterSpec spec = ModbusTable.byAddress(141);
+        if (button == null || spec == null || !spec.canWrite()) {
+            return;
+        }
+        button.setOnClickListener(v -> {
+            Object tag = button.getTag();
+            int currentValue = tag instanceof Integer ? (Integer) tag : spec.maxValue;
+            int nextValue = currentValue >= spec.maxValue ? spec.minValue : currentValue + 1;
+            button.setEnabled(false);
+            button.setTag(nextValue);
+            button.setText(ModbusUi.formatDefault(spec, nextValue));
+            ModbusManager.get(button.getContext()).write(spec, nextValue, new ModbusManager.VoidCallback() {
+                @Override
+                public void onSuccess() {
+                    button.setTag(nextValue);
+                    button.setText(ModbusUi.formatDefault(spec, nextValue));
+                    button.setEnabled(true);
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    button.setEnabled(true);
+                }
+            });
+        });
     }
 
     private static void bindPage4(View root) {
@@ -442,7 +478,14 @@ public class FactoryParamsFragment extends Fragment {
             view.setText("--");
             return;
         }
-        ModbusUi.bindValue(view, spec);
+        view.setText("--");
+        view.setTag(spec.minValue);
+        if (spec.canWrite()) {
+            view.setClickable(true);
+            view.setFocusable(true);
+            view.setOnClickListener(v -> ModbusUi.showEditor(
+                    view.getContext(), view, spec, ModbusUi::formatDefault));
+        }
     }
 
     private static void bindStatus(View root, int viewId, int address) {
@@ -455,19 +498,6 @@ public class FactoryParamsFragment extends Fragment {
         if (spec == null) {
             return;
         }
-        ModbusManager.get(indicator.getContext()).read(spec, new ModbusManager.IntCallback() {
-            @Override
-            public void onSuccess(int value) {
-                indicator.setBackgroundResource(value == 1
-                        ? R.drawable.factory_status_light_green
-                        : R.drawable.factory_status_light_red);
-            }
-
-            @Override
-            public void onError(Exception error) {
-                indicator.setBackgroundResource(R.drawable.factory_status_light_placeholder);
-            }
-        });
     }
 
     private final class FactoryParamsPagerAdapter extends RecyclerView.Adapter<FactoryParamsPagerAdapter.PageViewHolder> {

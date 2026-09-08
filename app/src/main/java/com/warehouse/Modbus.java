@@ -12,6 +12,7 @@ import android.system.StructPollfd;
 import android.text.InputType;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -69,7 +70,11 @@ final class ModbusTable {
     }
 
     private static ModbusRegisterSpec faultBool(int address) {
-        return ModbusTable.roBool(address, 0, 1, ModbusTable.option(0, "正常"), ModbusTable.option(1, "故障"));
+        return new ModbusRegisterSpec(address, ModbusRegisterSpec.Access.READ_ONLY,
+                ModbusRegisterSpec.Kind.BOOLEAN, 0, 1, "",
+                new ModbusRegisterSpec.EnumOption[] {
+                        ModbusTable.option(0, "正常"), ModbusTable.option(1, "故障")
+                }, 1, 6);
     }
 
     private static ModbusRegisterSpec woBool(int address, ModbusRegisterSpec.EnumOption ... options) {
@@ -95,6 +100,9 @@ final class ModbusTable {
         ModbusTable.register(ModbusTable.rwInt(5, 10, 50, "℃"));
         ModbusTable.register(ModbusTable.rwInt(6, 30, 100, "%"));
         ModbusTable.register(ModbusTable.rwInt(15, 50, 100, "%"));
+        ModbusTable.register(ModbusTable.rwInt(16, 0, 120, "RPS"));
+        ModbusTable.register(ModbusTable.rwInt(17, 0, 120, "RPS"));
+        ModbusTable.register(ModbusTable.roInt(538, 0, 100, "%"));
         ModbusTable.register(ModbusTable.woBool(539, ModbusTable.option(1, "恢复出厂设置")));
         ModbusTable.register(ModbusTable.woBool(566, ModbusTable.option(1, "确认")));
         ModbusTable.register(ModbusTable.woBool(799, ModbusTable.option(1, "确认")));
@@ -143,7 +151,7 @@ final class ModbusTable {
         ModbusTable.register(ModbusTable.roBool(953, 0, 1, ModbusTable.option(0, "关闭"), ModbusTable.option(1, "开启")));
         ModbusTable.register(ModbusTable.roBool(954, 0, 1, ModbusTable.option(0, "关闭"), ModbusTable.option(1, "开启")));
         ModbusTable.register(ModbusTable.roBool(935, 0, 1, ModbusTable.option(0, "关闭"), ModbusTable.option(1, "开启")));
-        ModbusTable.register(ModbusTable.roEnum(996, 0, 3, ModbusTable.option(0, "停机"), ModbusTable.option(1, "节能"), ModbusTable.option(2, "舒适"), ModbusTable.option(3, "强力")));
+        ModbusTable.register(ModbusTable.roEnum(996, 0, 3, ModbusTable.option(0, "关闭"), ModbusTable.option(1, "节能"), ModbusTable.option(2, "舒适"), ModbusTable.option(3, "强力")));
         ModbusTable.register(ModbusTable.rwBool(100, 0, 1, ModbusTable.option(0, "禁用"), ModbusTable.option(1, "启用")));
         ModbusTable.register(ModbusTable.rwInt(512, 0, 120, "RPS"));
         ModbusTable.register(ModbusTable.rwInt(524, 0, 500, "Step"));
@@ -350,34 +358,63 @@ final class ModbusUi {
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(1);
         root.setPadding(ModbusUi.dp(context, 18), ModbusUi.dp(context, 16), ModbusUi.dp(context, 18), ModbusUi.dp(context, 14));
-        TextView title = new TextView(context);
-        title.setText((CharSequence)("地址 " + spec.address));
-        title.setTextColor(-1);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setTextSize(18.0f);
-        root.addView((View)title);
-        TextView hint = new TextView(context);
-        hint.setText((CharSequence)("范围: " + spec.minValue + " ~ " + spec.maxValue));
-        hint.setTextColor(Color.rgb((int)180, (int)220, (int)230));
-        hint.setTextSize(12.0f);
-        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
-        hintParams.topMargin = ModbusUi.dp(context, 6);
-        root.addView((View)hint, (ViewGroup.LayoutParams)hintParams);
+        root.setBackgroundColor(Color.BLACK);
         EditText input = new EditText(context);
         input.setInputType(4098);
         input.setText((CharSequence)String.valueOf(currentValue));
         input.setTextColor(-1);
         input.setHintTextColor(Color.rgb((int)140, (int)180, (int)190));
         input.setPadding(ModbusUi.dp(context, 12), ModbusUi.dp(context, 10), ModbusUi.dp(context, 12), ModbusUi.dp(context, 10));
-        input.setBackgroundColor(Color.rgb((int)10, (int)38, (int)54));
+        input.setBackground(AdminUi.bg(Color.BLACK, 6, AdminUi.PANEL_STROKE, 1, context));
         LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(-1, -2);
-        inputParams.topMargin = ModbusUi.dp(context, 10);
         root.addView((View)input, (ViewGroup.LayoutParams)inputParams);
-        final AlertDialog dialog = new AlertDialog.Builder(context).setView((View)root).setNegativeButton((CharSequence)"取消", null).setPositiveButton((CharSequence)"确定", null).create();
-        dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
-            String text = input.getText() == null ? "" : input.getText().toString().trim();
-            try {
-                final int value = spec.clamp(Integer.parseInt(text));
+        Context dialogContext = new ContextThemeWrapper(context, R.style.BlackInputDialogTheme);
+        final AlertDialog dialog = new AlertDialog.Builder(dialogContext).setView((View)root).setNegativeButton((CharSequence)"取消", null).setPositiveButton((CharSequence)"确定", null).create();
+        dialog.setOnShowListener(d -> {
+            ModbusUi.styleEditorDialog(dialog, context);
+            dialog.getButton(-1).setOnClickListener(v -> {
+                String text = input.getText() == null ? "" : input.getText().toString().trim();
+                try {
+                    final int value = spec.clamp(Integer.parseInt(text));
+                    ModbusUi.updateLocalValue(targetView, spec, formatter, value);
+                    dialog.dismiss();
+                    ModbusManager.get(context).write(spec, value, new ModbusManager.VoidCallback(){
+
+                        @Override
+                        public void onSuccess() {
+                        }
+
+                        @Override
+                        public void onError(Exception error) {
+                            ModbusUi.showLocalWriteWarning(context);
+                        }
+                    });
+                }
+                catch (NumberFormatException e) {
+                    Toast.makeText((Context)context, (CharSequence)"请输入有效数值", (int)0).show();
+                }
+            });
+        });
+        dialog.show();
+    }
+
+    private static void showEnumEditor(final Context context, final TextView targetView, final ModbusRegisterSpec spec, int currentValue, final ValueFormatter formatter) {
+        CharSequence[] labels = new CharSequence[spec.options.length];
+        int checked = 0;
+        for (int i = 0; i < spec.options.length; ++i) {
+            labels[i] = spec.options[i].label;
+            if (spec.options[i].value != currentValue) continue;
+            checked = i;
+        }
+        int[] selected = new int[]{checked};
+        Context dialogContext = new ContextThemeWrapper(context, R.style.BlackInputDialogTheme);
+        final AlertDialog dialog = new AlertDialog.Builder(dialogContext).setSingleChoiceItems(labels, checked, (d, which) -> {
+            selected[0] = which;
+        }).setNegativeButton((CharSequence)"取消", null).setPositiveButton((CharSequence)"确定", null).create();
+        dialog.setOnShowListener(d -> {
+            ModbusUi.styleEditorDialog(dialog, context);
+            dialog.getButton(-1).setOnClickListener(v -> {
+                final int value = spec.options[selected[0]].value;
                 ModbusUi.updateLocalValue(targetView, spec, formatter, value);
                 dialog.dismiss();
                 ModbusManager.get(context).write(spec, value, new ModbusManager.VoidCallback(){
@@ -391,43 +428,34 @@ final class ModbusUi {
                         ModbusUi.showLocalWriteWarning(context);
                     }
                 });
-            }
-            catch (NumberFormatException e) {
-                Toast.makeText((Context)context, (CharSequence)"请输入有效数值", (int)0).show();
-            }
-        }));
+            });
+        });
         dialog.show();
     }
 
-    private static void showEnumEditor(final Context context, final TextView targetView, final ModbusRegisterSpec spec, int currentValue, final ValueFormatter formatter) {
-        CharSequence[] labels = new CharSequence[spec.options.length];
-        int checked = 0;
-        for (int i = 0; i < spec.options.length; ++i) {
-            labels[i] = spec.options[i].label;
-            if (spec.options[i].value != currentValue) continue;
-            checked = i;
+    private static void styleEditorDialog(AlertDialog dialog, Context context) {
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    context.getDrawable(R.drawable.input_dialog_black_bg));
         }
-        int[] selected = new int[]{checked};
-        final AlertDialog dialog = new AlertDialog.Builder(context).setTitle((CharSequence)("地址 " + spec.address)).setSingleChoiceItems(labels, checked, (d, which) -> {
-            selected[0] = which;
-        }).setNegativeButton((CharSequence)"取消", null).setPositiveButton((CharSequence)"确定", null).create();
-        dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
-            final int value = spec.options[selected[0]].value;
-            ModbusUi.updateLocalValue(targetView, spec, formatter, value);
-            dialog.dismiss();
-            ModbusManager.get(context).write(spec, value, new ModbusManager.VoidCallback(){
-
-                @Override
-                public void onSuccess() {
-                }
-
-                @Override
-                public void onError(Exception error) {
-                    ModbusUi.showLocalWriteWarning(context);
+        dialog.getButton(-1).setTextColor(AdminUi.ACCENT);
+        dialog.getButton(-2).setTextColor(AdminUi.TEXT_SECONDARY);
+        int titleId = context.getResources().getIdentifier("alertTitle", "id", "android");
+        TextView title = dialog.findViewById(titleId);
+        if (title != null) {
+            title.setTextColor(AdminUi.TEXT_PRIMARY);
+        }
+        if (dialog.getListView() != null) {
+            dialog.getListView().setBackgroundColor(Color.BLACK);
+            dialog.getListView().post(() -> {
+                for (int i = 0; i < dialog.getListView().getChildCount(); i++) {
+                    View item = dialog.getListView().getChildAt(i);
+                    if (item instanceof TextView) {
+                        ((TextView) item).setTextColor(AdminUi.TEXT_PRIMARY);
+                    }
                 }
             });
-        }));
-        dialog.show();
+        }
     }
 
     private static void updateLocalValue(TextView targetView, ModbusRegisterSpec spec, ValueFormatter formatter, int value) {
@@ -564,6 +592,38 @@ final class ModbusManager {
                 } else {
                     this.postError(callback, e);
                 }
+            }
+        });
+    }
+
+    void readCoils(int startAddress, int count, RangeCallback callback) {
+        if (callback == null) {
+            return;
+        }
+        if (startAddress < 0 || count < 1 || count > 2000) {
+            this.postError(callback, (Exception)new IOException("invalid coil count"));
+            return;
+        }
+        this.executor.execute(() -> {
+            try {
+                int[] rawValues = this.ensureClient().readCoils(startAddress, count);
+                int[] values = new int[rawValues.length];
+                for (int i = 0; i < rawValues.length; i++) {
+                    int address = startAddress + i;
+                    values[i] = this.decodeAddressValue(address, rawValues[i]);
+                    this.localValues.put(address, values[i]);
+                }
+                this.postSuccess(callback, startAddress, values);
+            }
+            catch (Exception e) {
+                Log.e(TAG, "coil read failed"
+                        + " device=" + this.devicePath
+                        + " baud=" + this.baudRate
+                        + " slave=" + this.slaveId
+                        + " start=" + startAddress
+                        + " count=" + count, e);
+                this.resetClient();
+                this.postError(callback, e);
             }
         });
     }
@@ -712,7 +772,7 @@ final class ModbusManager {
 
 final class ModbusRtuClient {
     private static final int MAX_FRAME_SIZE = 256;
-    private static final int DEFAULT_TIMEOUT_MS = 1500;
+    private static final int DEFAULT_TIMEOUT_MS = 500;
     private final ModbusTransport transport;
     private final int slaveId;
 
@@ -722,8 +782,49 @@ final class ModbusRtuClient {
     }
 
     synchronized int readRegister(int address, int functionCode) throws IOException {
+        if (functionCode == 1) {
+            return this.readCoils(address, 1)[0];
+        }
         int[] values = this.readRegisters(address, 1, functionCode);
         return values[0];
+    }
+
+    synchronized int[] readCoils(int address, int count) throws IOException {
+        if (count < 1 || count > 2000) {
+            throw new IOException("invalid coil count: " + count);
+        }
+        this.transport.open();
+        this.transport.discardInput();
+        byte[] request = new byte[8];
+        request[0] = (byte)this.slaveId;
+        request[1] = 1;
+        request[2] = (byte)(address >> 8 & 0xFF);
+        request[3] = (byte)(address & 0xFF);
+        request[4] = (byte)(count >> 8 & 0xFF);
+        request[5] = (byte)(count & 0xFF);
+        this.writeCrc(request, 6);
+        this.transport.write(request, 0, request.length);
+        this.transport.settleAfterWrite(request.length);
+        byte[] header = new byte[3];
+        this.readFully(header, 0, header.length, DEFAULT_TIMEOUT_MS);
+        this.validateHeader(header, 1);
+        if ((header[1] & 0x80) != 0) {
+            throw new IOException("modbus exception: " + this.readExceptionCode(header));
+        }
+        int byteCount = header[2] & 0xFF;
+        int expectedByteCount = (count + 7) / 8;
+        if (byteCount != expectedByteCount) {
+            throw new IOException("unexpected coil byte count: " + byteCount);
+        }
+        byte[] frame = new byte[3 + byteCount + 2];
+        System.arraycopy(header, 0, frame, 0, header.length);
+        this.readFully(frame, header.length, frame.length - header.length, DEFAULT_TIMEOUT_MS);
+        this.verifyCrc(frame, frame.length);
+        int[] values = new int[count];
+        for (int i = 0; i < count; i++) {
+            values[i] = (frame[3 + i / 8] >> (i % 8)) & 1;
+        }
+        return values;
     }
 
     synchronized int[] readRegisters(int address, int count, int functionCode) throws IOException {
@@ -743,7 +844,7 @@ final class ModbusRtuClient {
         this.transport.write(request, 0, request.length);
         this.transport.settleAfterWrite(request.length);
         byte[] header = new byte[3];
-        this.readFully(header, 0, header.length, 1500);
+        this.readFully(header, 0, header.length, DEFAULT_TIMEOUT_MS);
         this.validateHeader(header, functionCode);
         if ((header[1] & 0x80) != 0) {
             int exceptionCode = this.readExceptionCode(header);
@@ -760,9 +861,9 @@ final class ModbusRtuClient {
         byte[] frame = new byte[frameLength];
         System.arraycopy(header, 0, frame, 0, header.length);
         if (byteCount > 0) {
-            this.readFully(frame, 3, byteCount + 2, 1500);
+            this.readFully(frame, 3, byteCount + 2, DEFAULT_TIMEOUT_MS);
         } else {
-            this.readFully(frame, 3, 2, 1500);
+            this.readFully(frame, 3, 2, DEFAULT_TIMEOUT_MS);
         }
         this.verifyCrc(frame, frameLength);
         int[] values = new int[count];
@@ -787,9 +888,15 @@ final class ModbusRtuClient {
         this.writeCrc(request, 6);
         this.transport.write(request, 0, request.length);
         this.transport.settleAfterWrite(request.length);
+        byte[] header = new byte[3];
+        this.readFully(header, 0, header.length, DEFAULT_TIMEOUT_MS);
+        this.validateHeader(header, functionCode);
+        if ((header[1] & 0x80) != 0) {
+            throw new IOException("modbus exception: " + this.readExceptionCode(header));
+        }
         byte[] response = new byte[8];
-        this.readFully(response, 0, response.length, 1500);
-        this.validateHeader(response, functionCode);
+        System.arraycopy(header, 0, response, 0, header.length);
+        this.readFully(response, header.length, response.length - header.length, DEFAULT_TIMEOUT_MS);
         this.verifyCrc(response, response.length);
         if (response[1] != request[1]
                 || response[2] != request[2]
@@ -825,9 +932,8 @@ final class ModbusRtuClient {
 
     private int readExceptionCode(byte[] header) throws IOException {
         byte[] frame = new byte[5];
-        frame[0] = header[0];
-        frame[1] = header[1];
-        this.readFully(frame, 2, 3, 1500);
+        System.arraycopy(header, 0, frame, 0, header.length);
+        this.readFully(frame, header.length, frame.length - header.length, DEFAULT_TIMEOUT_MS);
         this.verifyCrc(frame, frame.length);
         return frame[2] & 0xFF;
     }

@@ -10,23 +10,20 @@
         android:layout_width="456px"
         android:layout_height="468px"
         android:layout_gravity="center"
-        android:orientation="vertical"
-        android:paddingLeft="18dp"
-        android:paddingTop="14dp"
-        android:paddingRight="18dp"
-        android:paddingBottom="14dp">
+        android:orientation="vertical">
 
         <LinearLayout
             android:id="@+id/admin_top_bar"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
+            android:layout_height="46dp"
+            android:layout_marginTop="14dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/btn_back"
-                android:layout_width="44dp"
-                android:layout_height="32dp"
+                android:layout_width="60dp"
+                android:layout_height="40dp"
                 android:background="@drawable/admin_button_bg"
                 android:clickable="true"
                 android:focusable="true"
@@ -47,9 +44,9 @@
                 android:orientation="horizontal">
 
                 <TextView
-                    android:id="@+id/tab_fault"
-                    android:layout_width="130dp"
-                    android:layout_height="32dp"
+                android:id="@+id/tab_fault"
+                android:layout_width="140dp"
+                android:layout_height="40dp"
                     android:background="@drawable/admin_button_bg"
                     android:clickable="true"
                     android:focusable="true"
@@ -57,13 +54,13 @@
                     android:includeFontPadding="false"
                     android:text="故障"
                     android:textColor="#E0F6F8"
-                    android:textSize="16sp"
+                android:textSize="17sp"
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/tab_factory"
-                    android:layout_width="130dp"
-                    android:layout_height="32dp"
+                android:id="@+id/tab_factory"
+                android:layout_width="140dp"
+                android:layout_height="40dp"
                     android:layout_marginStart="10dp"
                     android:background="@drawable/admin_button_bg"
                     android:clickable="true"
@@ -72,7 +69,7 @@
                     android:includeFontPadding="false"
                     android:text="厂家参数"
                     android:textColor="#E0F6F8"
-                    android:textSize="16sp"
+                android:textSize="17sp"
                     android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
@@ -81,8 +78,7 @@
             android:id="@+id/admin_content"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="8dp"
             android:layout_weight="1"
-            android:background="@drawable/admin_content_bg" />
+            android:background="@android:color/transparent" />
     </LinearLayout>
 </FrameLayout>
