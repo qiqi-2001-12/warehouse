@@ -184,7 +184,8 @@ public class HomeFragment extends Fragment {
         private boolean humidityAutoMode = true;
         private int humidityModeIndex = 0;
         private boolean smartModeEnabled = true;
-        private int supplyModeIndex = 0;
+        private int manualSupplyModeIndex = 1;
+        private int realtimeSupplyModeIndex = 0;
         private boolean pollingActive;
         private boolean metricPollInFlight;
         private boolean statePollInFlight;
@@ -239,6 +240,7 @@ public class HomeFragment extends Fragment {
                 autoButton.setOnClickListener(v -> writeIntValue(514, humidityAutoMode ? 1 : 0, value -> {
                     humidityAutoMode = value == 0;
                     refreshHumidityModeButton();
+                    refreshSupplyButtons();
                 }));
             }
 
@@ -361,8 +363,12 @@ public class HomeFragment extends Fragment {
                 smartModeEnabled = value == 1;
                 refreshSmartButtons();
             }, this::onStatePollReadFinished);
+            refreshState(141, value -> {
+                manualSupplyModeIndex = clampManualSupplyModeIndex(value);
+                refreshSupplyButtons();
+            }, this::onStatePollReadFinished);
             refreshState(996, value -> {
-                supplyModeIndex = clampIndex(value, SUPPLY_MODES.length);
+                realtimeSupplyModeIndex = clampIndex(value, SUPPLY_MODES.length);
                 refreshSupplyButtons();
             }, this::onStatePollReadFinished);
         }
@@ -375,6 +381,7 @@ public class HomeFragment extends Fragment {
             int reads = 0;
             reads += hasReadableControlStateRange() ? 1 : 0;
             reads += canReadAddress(100) ? 1 : 0;
+            reads += canReadAddress(141) ? 1 : 0;
             reads += canReadAddress(996) ? 1 : 0;
             return reads;
         }
@@ -460,6 +467,7 @@ public class HomeFragment extends Fragment {
                     switchOn = rangeValue(startAddress, values, 515) == 1;
                     refreshHumidityModeValue();
                     refreshHumidityModeButton();
+                    refreshSupplyButtons();
                     updateSwitchButton();
                     onFinished.run();
                 }
@@ -703,6 +711,7 @@ public class HomeFragment extends Fragment {
                 }));
             } else {
                 supplyModeButton = button;
+                button.setOnClickListener(v -> cycleSupplyMode());
             }
         }
 
@@ -800,16 +809,37 @@ public class HomeFragment extends Fragment {
         private void refreshSupplyButtons() {
             if (supplyModeButton != null) {
                 String text = getSupplyModeText();
+                boolean manualMode = !humidityAutoMode;
                 supplyModeButton.setText(text);
                 supplyModeButton.setBackgroundResource("关闭".equals(text)
                         ? R.drawable.humidity_switch_on_bg
                         : R.drawable.humidity_switch_off_bg);
                 supplyModeButton.setTextColor("关闭".equals(text) ? AdminUi.PAGE_BG : AdminUi.ACCENT);
+                supplyModeButton.setEnabled(manualMode);
+                supplyModeButton.setClickable(manualMode);
+                supplyModeButton.setFocusable(manualMode);
+                supplyModeButton.setAlpha(manualMode ? 1f : 0.7f);
             }
         }
 
         private String getSupplyModeText() {
-            return SUPPLY_MODES[supplyModeIndex];
+            int modeIndex = humidityAutoMode ? realtimeSupplyModeIndex : manualSupplyModeIndex;
+            return SUPPLY_MODES[modeIndex];
+        }
+
+        private void cycleSupplyMode() {
+            if (humidityAutoMode) {
+                return;
+            }
+            int nextMode = manualSupplyModeIndex >= 3 ? 1 : manualSupplyModeIndex + 1;
+            writeIntValue(141, nextMode, value -> {
+                manualSupplyModeIndex = clampManualSupplyModeIndex(value);
+                refreshSupplyButtons();
+            });
+        }
+
+        private int clampManualSupplyModeIndex(int value) {
+            return Math.max(1, Math.min(3, value));
         }
 
         private String getHumidityModeText() {

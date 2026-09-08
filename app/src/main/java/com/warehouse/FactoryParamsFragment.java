@@ -261,7 +261,7 @@ public class FactoryParamsFragment extends Fragment {
         reads += refreshValue(root, R.id.param3_comfort_exhaust_valve_value, 170);
         reads += refreshValue(root, R.id.param3_boost_exhaust_valve_value, 171);
         reads += refreshValue(root, R.id.param3_fresh_air_heater_max_output_value, 140);
-        reads += refreshValue(root, R.id.param3_supply_mode_button, 141);
+        reads += refreshValue(root, R.id.param3_supply_mode_button, 159);
         return reads;
     }
 
@@ -424,7 +424,7 @@ public class FactoryParamsFragment extends Fragment {
 
     private static void bindSupplyModeButton(View root) {
         TextView button = root.findViewById(R.id.param3_supply_mode_button);
-        ModbusRegisterSpec spec = ModbusTable.byAddress(141);
+        ModbusRegisterSpec spec = ModbusTable.byAddress(159);
         if (button == null || spec == null || !spec.canWrite()) {
             return;
         }
