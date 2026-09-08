@@ -1,13 +1,13 @@
-package com.warehouse;
+package com.warehouse.core.ui;
 
 import android.view.View;
 
 /** Keeps a fixed-design panel fully visible on displays smaller than its design size. */
-final class ScreenFit {
+public final class ScreenFit {
     private ScreenFit() {
     }
 
-    static void bind(View host, View content) {
+    public static void bind(View host, View content) {
         host.addOnLayoutChangeListener((view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
                 fitInside(host, content));
         host.post(() -> fitInside(host, content));

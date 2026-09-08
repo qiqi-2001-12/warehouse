@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
@@ -12,7 +13,7 @@
         android:theme="@style/AppTheme">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".app.MainActivity"
             android:configChanges="fontScale|screenSize|orientation"
             android:exported="true"
             android:screenOrientation="landscape">
@@ -23,7 +24,7 @@
         </activity>
 
         <receiver
-            android:name=".BootBroadcastReceiver"
+            android:name=".app.boot.BootBroadcastReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

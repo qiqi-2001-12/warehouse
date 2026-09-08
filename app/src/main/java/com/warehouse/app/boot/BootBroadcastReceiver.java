@@ -1,8 +1,10 @@
-package com.warehouse;
+package com.warehouse.app.boot;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+
+import com.warehouse.app.MainActivity;
 
 public final class BootBroadcastReceiver extends BroadcastReceiver {
     @Override

@@ -1,4 +1,4 @@
-package com.warehouse;
+package com.warehouse.fragment.fault;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -17,6 +17,11 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+
+import com.warehouse.device.DeviceGateway;
+import com.warehouse.device.FaultMonitor;
+import com.warehouse.R;
+import com.warehouse.core.ui.AdminUi;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -157,13 +162,13 @@ public class FaultFragment extends Fragment {
     }
 
     private void writeConfirm(int address) {
-        ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-        if (spec == null) {
+        DeviceGateway gateway = DeviceGateway.get(requireContext());
+        if (!gateway.canWrite(address)) {
             Toast.makeText(requireContext(), "\u672a\u627e\u5230\u5bc4\u5b58\u5668", Toast.LENGTH_SHORT).show();
             return;
         }
         Context appContext = requireContext().getApplicationContext();
-        ModbusManager.get(appContext).write(spec, 1, new ModbusManager.VoidCallback() {
+        gateway.write(address, 1, new DeviceGateway.WriteCallback() {
             @Override
             public void onSuccess() {
                 if (isAdded()) {

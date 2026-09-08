@@ -1,4 +1,4 @@
-package com.warehouse;
+package com.warehouse.fragment.factory;
 
 import android.os.Bundle;
 import android.os.Handler;
@@ -16,6 +16,10 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
+
+import com.warehouse.device.DeviceGateway;
+import com.warehouse.R;
+import com.warehouse.core.ui.AdminUi;
 
 public class FactoryParamsFragment extends Fragment {
     private static final long POLL_INTERVAL_MS = 1000L;
@@ -131,12 +135,12 @@ public class FactoryParamsFragment extends Fragment {
     }
 
     private void writeConfirm(int address) {
-        ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-        if (spec == null) {
+        DeviceGateway gateway = DeviceGateway.get(requireContext());
+        if (!gateway.canWrite(address)) {
             Toast.makeText(requireContext(), "\u672a\u627e\u5230\u5bc4\u5b58\u5668", Toast.LENGTH_SHORT).show();
             return;
         }
-        ModbusManager.get(requireContext()).write(spec, 1, new ModbusManager.VoidCallback() {
+        gateway.write(address, 1, new DeviceGateway.WriteCallback() {
             @Override
             public void onSuccess() {
                 Toast.makeText(requireContext(), "\u5df2\u53d1\u9001", Toast.LENGTH_SHORT).show();
@@ -291,16 +295,16 @@ public class FactoryParamsFragment extends Fragment {
         if (view == null) {
             return 0;
         }
-        ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-        if (spec == null || !spec.canRead()) {
+        DeviceGateway gateway = DeviceGateway.get(view.getContext());
+        if (!gateway.canRead(address)) {
             view.setText("--");
             return 0;
         }
-        ModbusManager.get(view.getContext()).read(spec, new ModbusManager.IntCallback() {
+        gateway.read(address, new DeviceGateway.IntCallback() {
             @Override
             public void onSuccess(int value) {
                 view.setTag(value);
-                view.setText(ModbusUi.formatDefault(spec, value));
+                view.setText(gateway.formatDefault(address, value));
                 onPollReadFinished();
             }
 
@@ -320,12 +324,12 @@ public class FactoryParamsFragment extends Fragment {
         if (indicator == null) {
             return 0;
         }
-        ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-        if (spec == null || !spec.canRead()) {
+        DeviceGateway gateway = DeviceGateway.get(indicator.getContext());
+        if (!gateway.canRead(address)) {
             indicator.setBackgroundResource(R.drawable.factory_status_light_placeholder);
             return 0;
         }
-        ModbusManager.get(indicator.getContext()).read(spec, new ModbusManager.IntCallback() {
+        gateway.read(address, new DeviceGateway.IntCallback() {
             @Override
             public void onSuccess(int value) {
                 indicator.setBackgroundResource(value == 1
@@ -424,22 +428,25 @@ public class FactoryParamsFragment extends Fragment {
 
     private static void bindSupplyModeButton(View root) {
         TextView button = root.findViewById(R.id.param3_supply_mode_button);
-        ModbusRegisterSpec spec = ModbusTable.byAddress(159);
-        if (button == null || spec == null || !spec.canWrite()) {
+        if (button == null) {
+            return;
+        }
+        DeviceGateway gateway = DeviceGateway.get(button.getContext());
+        if (!gateway.canWrite(159)) {
             return;
         }
         button.setOnClickListener(v -> {
             Object tag = button.getTag();
-            int currentValue = tag instanceof Integer ? (Integer) tag : spec.maxValue;
-            int nextValue = currentValue >= spec.maxValue ? spec.minValue : currentValue + 1;
+            int currentValue = tag instanceof Integer ? (Integer) tag : gateway.maxValue(159);
+            int nextValue = currentValue >= gateway.maxValue(159) ? gateway.minValue(159) : currentValue + 1;
             button.setEnabled(false);
             button.setTag(nextValue);
-            button.setText(ModbusUi.formatDefault(spec, nextValue));
-            ModbusManager.get(button.getContext()).write(spec, nextValue, new ModbusManager.VoidCallback() {
+            button.setText(gateway.formatDefault(159, nextValue));
+            gateway.write(159, nextValue, new DeviceGateway.WriteCallback() {
                 @Override
                 public void onSuccess() {
                     button.setTag(nextValue);
-                    button.setText(ModbusUi.formatDefault(spec, nextValue));
+                    button.setText(gateway.formatDefault(159, nextValue));
                     button.setEnabled(true);
                 }
 
@@ -473,18 +480,17 @@ public class FactoryParamsFragment extends Fragment {
         if (view == null) {
             return;
         }
-        ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-        if (spec == null) {
+        DeviceGateway gateway = DeviceGateway.get(view.getContext());
+        if (!gateway.canRead(address) && !gateway.canWrite(address)) {
             view.setText("--");
             return;
         }
         view.setText("--");
-        view.setTag(spec.minValue);
-        if (spec.canWrite()) {
+        view.setTag(gateway.minValue(address));
+        if (gateway.canWrite(address)) {
             view.setClickable(true);
             view.setFocusable(true);
-            view.setOnClickListener(v -> ModbusUi.showEditor(
-                    view.getContext(), view, spec, ModbusUi::formatDefault));
+            view.setOnClickListener(v -> gateway.showEditor(view, address));
         }
     }
 
@@ -494,8 +500,7 @@ public class FactoryParamsFragment extends Fragment {
             return;
         }
         indicator.setBackgroundResource(R.drawable.factory_status_light_placeholder);
-        ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-        if (spec == null) {
+        if (!DeviceGateway.get(indicator.getContext()).canRead(address)) {
             return;
         }
     }

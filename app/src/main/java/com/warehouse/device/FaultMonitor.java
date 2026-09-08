@@ -1,4 +1,4 @@
-package com.warehouse;
+package com.warehouse.device;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -14,7 +14,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-final class FaultMonitor {
+public final class FaultMonitor {
     private static final long POLL_INTERVAL_MS = 2000L;
     private static final int MAX_LOG_ENTRIES = 200;
     private static final String PREFERENCES_NAME = "fault_monitor";
@@ -51,14 +51,14 @@ final class FaultMonitor {
 
     private static FaultMonitor instance;
 
-    static synchronized FaultMonitor get(Context context) {
+    public static synchronized FaultMonitor get(Context context) {
         if (instance == null) {
             instance = new FaultMonitor(context.getApplicationContext());
         }
         return instance;
     }
 
-    static void start(Context context) {
+    public static void start(Context context) {
         get(context).startMonitoring();
     }
 
@@ -85,7 +85,7 @@ final class FaultMonitor {
         scheduleNextPoll(0L);
     }
 
-    void addListener(Listener listener) {
+    public void addListener(Listener listener) {
         if (listener == null) {
             return;
         }
@@ -93,11 +93,11 @@ final class FaultMonitor {
         listener.onFaultLogChanged();
     }
 
-    void removeListener(Listener listener) {
+    public void removeListener(Listener listener) {
         listeners.remove(listener);
     }
 
-    List<FaultLogEntry> getEntries() {
+    public List<FaultLogEntry> getEntries() {
         return new ArrayList<>(entries);
     }
 
@@ -125,8 +125,8 @@ final class FaultMonitor {
         pollInFlight = true;
         final int[] remainingReads = new int[] {readableGroups.size()};
         for (ReadGroup group : readableGroups) {
-            ModbusManager.get(appContext).readCoils(group.startAddress, group.count,
-                    new ModbusManager.RangeCallback() {
+            DeviceGateway.get(appContext).readCoils(group.startAddress, group.count,
+                    new DeviceGateway.RangeCallback() {
                         @Override
                         public void onSuccess(int startAddress, int[] values) {
                             updateFaultStates(startAddress, values);
@@ -228,14 +228,14 @@ final class FaultMonitor {
         }
     }
 
-    interface Listener {
+    public interface Listener {
         void onFaultLogChanged();
     }
 
-    static final class FaultLogEntry {
-        final long timestamp;
-        final int address;
-        final String message;
+    public static final class FaultLogEntry {
+        public final long timestamp;
+        public final int address;
+        public final String message;
 
         FaultLogEntry(long timestamp, int address, String message) {
             this.timestamp = timestamp;

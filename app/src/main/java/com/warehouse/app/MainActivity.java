@@ -1,10 +1,13 @@
-package com.warehouse;
+package com.warehouse.app;
 
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.warehouse.device.FaultMonitor;
+import com.warehouse.fragment.home.HomeFragment;
 
 public class MainActivity extends AppCompatActivity {
     @Override

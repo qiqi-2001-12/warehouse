@@ -1,4 +1,4 @@
-package com.warehouse;
+package com.warehouse.device;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -21,6 +21,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+
+import com.warehouse.R;
+import com.warehouse.core.ui.AdminUi;
 import java.io.File;
 import java.io.Closeable;
 import java.io.ByteArrayOutputStream;

@@ -1,4 +1,4 @@
-package com.warehouse;
+package com.warehouse.fragment.admin;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -9,6 +9,12 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+
+import com.warehouse.R;
+import com.warehouse.core.ui.AdminUi;
+import com.warehouse.core.ui.ScreenFit;
+import com.warehouse.fragment.factory.FactoryParamsFragment;
+import com.warehouse.fragment.fault.FaultFragment;
 
 public class AdminContainerFragment extends Fragment {
     private int contentId;

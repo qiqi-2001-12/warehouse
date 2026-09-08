@@ -1,4 +1,4 @@
-package com.warehouse;
+package com.warehouse.fragment.home;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -34,7 +34,18 @@ import androidx.core.widget.ImageViewCompat;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.warehouse.device.DeviceGateway;
+import com.warehouse.R;
+import com.warehouse.core.ui.AdminUi;
+import com.warehouse.core.ui.ScreenFit;
+import com.warehouse.fragment.admin.AdminContainerFragment;
+import com.warehouse.remote.OpenMeteoWeatherClient;
+
 public class HomeFragment extends Fragment {
+    // Set these to the installed device's location.
+    private static final double WEATHER_LATITUDE = 39.32542;
+    private static final double WEATHER_LONGITUDE = 115.86885;
+    private static final long WEATHER_REFRESH_INTERVAL_MS = 10 * 60 * 1000L;
     private static final String VALUE_PLACEHOLDER = "--";
     private static final String INPUT_HINT_PLACEHOLDER = "待绑定";
 
@@ -47,6 +58,8 @@ public class HomeFragment extends Fragment {
     private TextView outdoorStatusView;
     private ImageView adminIconView;
     private ImageView wifiIconView;
+    private final Handler weatherHandler = new Handler(Looper.getMainLooper());
+    private final OpenMeteoWeatherClient weatherClient = new OpenMeteoWeatherClient();
 
     private final BroadcastReceiver wifiStateReceiver = new BroadcastReceiver() {
         @Override
@@ -74,10 +87,12 @@ public class HomeFragment extends Fragment {
         wifiFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
         wifiFilter.addAction("android.net.wifi.STATE_CHANGE");
         requireContext().registerReceiver(wifiStateReceiver, wifiFilter);
+        scheduleWeatherRefresh(0L);
     }
 
     @Override
     public void onStop() {
+        weatherHandler.removeCallbacksAndMessages(null);
         try {
             requireContext().unregisterReceiver(wifiStateReceiver);
         } catch (IllegalArgumentException ignored) {
@@ -128,6 +143,8 @@ public class HomeFragment extends Fragment {
         if (wifiIconView != null) {
             wifiIconView.setImageResource(R.drawable.wifi);
             ImageViewCompat.setImageTintList(wifiIconView, ColorStateList.valueOf(AdminUi.ACCENT));
+            wifiIconView.setContentDescription("Wi-Fi setup");
+            wifiIconView.setOnClickListener(v -> openWifiPage());
         }
     }
 
@@ -142,6 +159,17 @@ public class HomeFragment extends Fragment {
                 .commit();
     }
 
+    private void openWifiPage() {
+        if (!isAdded()) {
+            return;
+        }
+        getParentFragmentManager()
+                .beginTransaction()
+                .replace(android.R.id.content, new WifiSetupFragment())
+                .addToBackStack("wifi_setup")
+                .commit();
+    }
+
     private void updateWifiIconVisibility() {
         if (wifiIconView == null) {
             return;
@@ -153,7 +181,58 @@ public class HomeFragment extends Fragment {
             wifiConnected = info != null && info.isConnected() && info.getType() == ConnectivityManager.TYPE_WIFI;
         } catch (Exception ignored) {
         }
-        wifiIconView.setVisibility(wifiConnected ? View.VISIBLE : View.GONE);
+        wifiIconView.setVisibility(View.VISIBLE);
+        ImageViewCompat.setImageTintList(wifiIconView, ColorStateList.valueOf(
+                wifiConnected ? AdminUi.ACCENT : AdminUi.TEXT_SECONDARY));
+    }
+
+    private void scheduleWeatherRefresh(long delayMs) {
+        weatherHandler.removeCallbacksAndMessages(null);
+        if (!isAdded()) {
+            return;
+        }
+        weatherHandler.postDelayed(this::loadOutdoorWeather, Math.max(0L, delayMs));
+    }
+
+    private void loadOutdoorWeather() {
+        if (!isAdded()) {
+            return;
+        }
+        weatherClient.fetchCurrentWeather(WEATHER_LATITUDE, WEATHER_LONGITUDE,
+                new OpenMeteoWeatherClient.Callback() {
+                    @Override
+                    public void onSuccess(OpenMeteoWeatherClient.CurrentWeather weather) {
+                        weatherHandler.post(() -> {
+                            if (!isAdded()) {
+                                return;
+                            }
+                            showOutdoorWeather(weather);
+                            scheduleWeatherRefresh(WEATHER_REFRESH_INTERVAL_MS);
+                        });
+                    }
+
+                    @Override
+                    public void onError(Exception error) {
+                        weatherHandler.post(() -> {
+                            if (isAdded()) {
+                                scheduleWeatherRefresh(WEATHER_REFRESH_INTERVAL_MS);
+                            }
+                        });
+                    }
+                });
+    }
+
+    private void showOutdoorWeather(OpenMeteoWeatherClient.CurrentWeather weather) {
+        if (weatherIconView != null) {
+            weatherIconView.setText(weather.getCondition().getIcon());
+        }
+        if (outdoorTempView != null) {
+            outdoorTempView.setText(String.format(
+                    java.util.Locale.CHINA, "%.0f\u00b0", weather.getTemperatureCelsius()));
+        }
+        if (outdoorStatusView != null) {
+            outdoorStatusView.setText(weather.getCondition().getHeaderLabel());
+        }
     }
 
     private static final class HomePagerAdapter extends FragmentStateAdapter {
@@ -403,16 +482,15 @@ public class HomeFragment extends Fragment {
         }
 
         private boolean canReadAddress(int address) {
-            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-            return spec != null && spec.canRead();
+            return DeviceGateway.get(requireContext()).canRead(address);
         }
 
         private int refreshState(int address, IntValueConsumer consumer, Runnable onFinished) {
-            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-            if (spec == null || !spec.canRead()) {
+            DeviceGateway gateway = DeviceGateway.get(requireContext());
+            if (!gateway.canRead(address)) {
                 return 0;
             }
-            ModbusManager.get(requireContext()).read(spec, new ModbusManager.IntCallback() {
+            gateway.read(address, new DeviceGateway.IntCallback() {
                 @Override
                 public void onSuccess(int value) {
                     consumer.accept(value);
@@ -431,7 +509,7 @@ public class HomeFragment extends Fragment {
             if (!hasReadableMetricRange()) {
                 return 0;
             }
-            ModbusManager.get(requireContext()).readRange(860, 6, new ModbusManager.RangeCallback() {
+            DeviceGateway.get(requireContext()).readRange(860, 6, new DeviceGateway.RangeCallback() {
                 @Override
                 public void onSuccess(int startAddress, int[] values) {
                     updateMetricValue(indoorPm25ValueView, 860, startAddress, values);
@@ -459,7 +537,7 @@ public class HomeFragment extends Fragment {
             if (!hasReadableControlStateRange()) {
                 return 0;
             }
-            ModbusManager.get(requireContext()).readRange(513, 3, new ModbusManager.RangeCallback() {
+            DeviceGateway.get(requireContext()).readRange(513, 3, new DeviceGateway.RangeCallback() {
                 @Override
                 public void onSuccess(int startAddress, int[] values) {
                     humidityModeIndex = clampIndex(rangeValue(startAddress, values, 513), HUMIDITY_MODES.length);
@@ -484,14 +562,14 @@ public class HomeFragment extends Fragment {
             if (view == null) {
                 return;
             }
-            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-            if (spec == null || !spec.canRead()) {
+            DeviceGateway gateway = DeviceGateway.get(requireContext());
+            if (!gateway.canRead(address)) {
                 view.setText(VALUE_PLACEHOLDER);
                 return;
             }
             int value = rangeValue(startAddress, values, address);
             view.setTag(value);
-            view.setText(ModbusUi.formatDefault(spec, value));
+            view.setText(gateway.formatDefault(address, value));
         }
 
         private void showMetricPlaceholder(TextView view) {
@@ -690,14 +768,14 @@ public class HomeFragment extends Fragment {
                     ? createModeToggleButton(context, smartModeEnabled ? "启用" : "禁用")
                     : createSupplyModeButton(context, getSupplyModeText());
             if (smartMode) {
-                TextView title = AdminUi.text(context, titleText, 18, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+                TextView title = AdminUi.text(context, titleText, 22, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
                 title.setGravity(Gravity.CENTER_VERTICAL);
                 LinearLayout.LayoutParams titleParams = AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
                 row.addView(title, titleParams);
                 row.addView(button, AdminUi.lp(AdminUi.dp(context, 110), AdminUi.dp(context, 50)));
             } else {
                 row.addView(button, AdminUi.lp(AdminUi.dp(context, 110), AdminUi.dp(context, 50)));
-                TextView title = AdminUi.text(context, titleText, 18, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+                TextView title = AdminUi.text(context, titleText, 22, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
                 title.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
                 LinearLayout.LayoutParams titleParams = AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
                 row.addView(title, titleParams);
@@ -847,12 +925,12 @@ public class HomeFragment extends Fragment {
         }
 
         private void writeIntValue(int address, int value, IntValueConsumer consumer) {
-            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-            if (spec == null || !spec.canWrite() || !isAdded()) {
+            DeviceGateway gateway = DeviceGateway.get(requireContext());
+            if (!gateway.canWrite(address) || !isAdded()) {
                 return;
             }
             consumer.accept(value);
-            ModbusManager.get(requireContext()).write(spec, value, new ModbusManager.VoidCallback() {
+            gateway.write(address, value, new DeviceGateway.WriteCallback() {
                 @Override
                 public void onSuccess() {
                     requestImmediateMetricPoll();
@@ -1054,24 +1132,22 @@ public class HomeFragment extends Fragment {
         }
 
         private boolean hasReadableFilterLife() {
-            ModbusRegisterSpec spec = ModbusTable.byAddress(538);
             return filterLifeProgressBar != null && filterLifeValueView != null
-                    && spec != null && spec.canRead();
+                    && DeviceGateway.get(requireContext()).canRead(538);
         }
 
         private boolean canReadValue(TextView view, int address) {
             if (view == null) {
                 return false;
             }
-            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-            return spec != null && spec.canRead();
+            return DeviceGateway.get(requireContext()).canRead(address);
         }
 
         private int refreshSettingRange() {
             if (!hasReadableSettingRange()) {
                 return 0;
             }
-            ModbusManager.get(requireContext()).readRange(5, 2, new ModbusManager.RangeCallback() {
+            DeviceGateway.get(requireContext()).readRange(5, 2, new DeviceGateway.RangeCallback() {
                 @Override
                 public void onSuccess(int startAddress, int[] values) {
                     temperatureSetting = rangeValue(startAddress, values, 5);
@@ -1093,12 +1169,12 @@ public class HomeFragment extends Fragment {
             if (view == null) {
                 return 0;
             }
-            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-            if (spec == null || !spec.canRead()) {
+            DeviceGateway gateway = DeviceGateway.get(view.getContext());
+            if (!gateway.canRead(address)) {
                 view.setText(VALUE_PLACEHOLDER);
                 return 0;
             }
-            ModbusManager.get(view.getContext()).read(spec, new ModbusManager.IntCallback() {
+            gateway.read(address, new DeviceGateway.IntCallback() {
                 @Override
                 public void onSuccess(int value) {
                     consumer.accept(value);
@@ -1120,7 +1196,7 @@ public class HomeFragment extends Fragment {
             if (!hasReadableSmartAirRange()) {
                 return 0;
             }
-            ModbusManager.get(requireContext()).readRange(500, 8, new ModbusManager.RangeCallback() {
+            DeviceGateway.get(requireContext()).readRange(500, 8, new DeviceGateway.RangeCallback() {
                 @Override
                 public void onSuccess(int startAddress, int[] values) {
                     updateSmartAirValue(freshAirTemperatureValueView, 500, startAddress, values);
@@ -1150,8 +1226,7 @@ public class HomeFragment extends Fragment {
             if (!hasReadableFilterLife()) {
                 return 0;
             }
-            ModbusRegisterSpec spec = ModbusTable.byAddress(538);
-            ModbusManager.get(requireContext()).read(spec, new ModbusManager.IntCallback() {
+            DeviceGateway.get(requireContext()).read(538, new DeviceGateway.IntCallback() {
                 @Override
                 public void onSuccess(int value) {
                     updateFilterLife(value);
@@ -1186,14 +1261,14 @@ public class HomeFragment extends Fragment {
             if (view == null) {
                 return;
             }
-            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-            if (spec == null || !spec.canRead()) {
+            DeviceGateway gateway = DeviceGateway.get(requireContext());
+            if (!gateway.canRead(address)) {
                 view.setText(VALUE_PLACEHOLDER);
                 return;
             }
             int value = rangeValue(startAddress, values, address);
             view.setTag(value);
-            view.setText(ModbusUi.formatDefault(spec, value));
+            view.setText(gateway.formatDefault(address, value));
         }
 
         private void showValuePlaceholder(TextView view) {
@@ -1451,12 +1526,12 @@ public class HomeFragment extends Fragment {
         }
 
         private void writeSettingValue(int address, int value, Runnable onSuccess) {
-            ModbusRegisterSpec spec = ModbusTable.byAddress(address);
-            if (spec == null || !spec.canWrite() || !isAdded()) {
+            DeviceGateway gateway = DeviceGateway.get(requireContext());
+            if (!gateway.canWrite(address) || !isAdded()) {
                 return;
             }
             onSuccess.run();
-            ModbusManager.get(requireContext()).write(spec, value, new ModbusManager.VoidCallback() {
+            gateway.write(address, value, new DeviceGateway.WriteCallback() {
                 @Override
                 public void onSuccess() {
                     requestImmediatePoll();
