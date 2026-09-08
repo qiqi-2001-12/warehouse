@@ -17,6 +17,7 @@ public final class OpenMeteoWeatherClient {
     private static final String ENDPOINT = "https://api.open-meteo.com/v1/forecast";
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int READ_TIMEOUT_MS = 15_000;
+    private static volatile CurrentWeather cachedCurrentWeather;
 
     public interface Callback {
         void onSuccess(CurrentWeather weather);
@@ -35,6 +36,10 @@ public final class OpenMeteoWeatherClient {
                 callback.onError(error);
             }
         }, "open-meteo-request").start();
+    }
+
+    public CurrentWeather getCachedCurrentWeather() {
+        return cachedCurrentWeather;
     }
 
     private CurrentWeather requestCurrentWeather(double latitude, double longitude)
@@ -59,7 +64,10 @@ public final class OpenMeteoWeatherClient {
             JSONObject current = new JSONObject(body).getJSONObject("current");
             double temperature = current.getDouble("temperature_2m");
             int weatherCode = current.getInt("weather_code");
-            return new CurrentWeather(temperature, weatherCode, WeatherCondition.fromCode(weatherCode));
+            CurrentWeather weather = new CurrentWeather(
+                    temperature, weatherCode, WeatherCondition.fromCode(weatherCode));
+            cachedCurrentWeather = weather;
+            return weather;
         } finally {
             connection.disconnect();
         }

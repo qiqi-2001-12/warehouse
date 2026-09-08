@@ -231,7 +231,7 @@
                     android:orientation="horizontal">
 
                     <TextView
-                        android:id="@+id/param2_compressor_freq_value"
+                        android:id="@+id/param2_supply_fan_speed_value"
                         android:layout_width="78dp"
                         android:layout_height="46dp"
                         android:background="@drawable/factory_param_value_bg"
@@ -350,7 +350,7 @@
                     android:orientation="horizontal">
 
                     <TextView
-                        android:id="@+id/param2_expansion_valve_step_value"
+                        android:id="@+id/param2_compressor_freq_value"
                         android:layout_width="78dp"
                         android:layout_height="46dp"
                         android:background="@drawable/factory_param_value_bg"
@@ -397,7 +397,7 @@
                     android:orientation="horizontal">
 
                     <TextView
-                        android:id="@+id/param2_condenser_fan_value"
+                        android:id="@+id/param2_expansion_valve_step_value"
                         android:layout_width="78dp"
                         android:layout_height="46dp"
                         android:background="@drawable/factory_param_value_bg"
@@ -445,6 +445,7 @@
                     android:orientation="horizontal">
 
                     <TextView
+                        android:id="@+id/param2_condenser_fan_value"
                         android:layout_width="78dp"
                         android:layout_height="46dp"
                         android:background="@drawable/factory_param_value_bg"

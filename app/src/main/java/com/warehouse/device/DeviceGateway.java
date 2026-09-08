@@ -3,6 +3,8 @@ package com.warehouse.device;
 import android.content.Context;
 import android.widget.TextView;
 
+import androidx.annotation.Nullable;
+
 /** Public boundary between application features and the Modbus implementation. */
 public final class DeviceGateway {
     private final Context appContext;
@@ -39,6 +41,11 @@ public final class DeviceGateway {
 
     public String formatDefault(int address, int value) {
         return ModbusUi.formatDefault(requireSpec(address), value);
+    }
+
+    @Nullable
+    public Integer getCachedValue(int address) {
+        return ModbusManager.get(appContext).getCachedValue(address);
     }
 
     public void showEditor(TextView view, int address) {

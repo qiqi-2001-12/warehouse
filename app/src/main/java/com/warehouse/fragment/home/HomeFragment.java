@@ -4,9 +4,13 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
@@ -29,6 +33,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.core.widget.ImageViewCompat;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
@@ -42,10 +47,11 @@ import com.warehouse.fragment.admin.AdminContainerFragment;
 import com.warehouse.remote.OpenMeteoWeatherClient;
 
 public class HomeFragment extends Fragment {
-    // Set these to the installed device's location.
-    private static final double WEATHER_LATITUDE = 39.32542;
-    private static final double WEATHER_LONGITUDE = 115.86885;
+    private static final double FALLBACK_WEATHER_LATITUDE = 39.32542;
+    private static final double FALLBACK_WEATHER_LONGITUDE = 115.86885;
     private static final long WEATHER_REFRESH_INTERVAL_MS = 10 * 60 * 1000L;
+    private static final long LOCATION_UPDATE_TIMEOUT_MS = 10_000L;
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private static final String VALUE_PLACEHOLDER = "--";
     private static final String INPUT_HINT_PLACEHOLDER = "待绑定";
 
@@ -60,6 +66,13 @@ public class HomeFragment extends Fragment {
     private ImageView wifiIconView;
     private final Handler weatherHandler = new Handler(Looper.getMainLooper());
     private final OpenMeteoWeatherClient weatherClient = new OpenMeteoWeatherClient();
+    private final Runnable weatherRefreshRunnable = this::loadOutdoorWeather;
+    private int weatherRequestSequence;
+    private boolean locationPermissionRequestInProgress;
+    private boolean locationUpdateInProgress;
+    private LocationManager weatherLocationManager;
+    private LocationListener weatherLocationListener;
+    private final Runnable locationUpdateTimeout = this::cancelPendingLocationUpdate;
 
     private final BroadcastReceiver wifiStateReceiver = new BroadcastReceiver() {
         @Override
@@ -93,6 +106,7 @@ public class HomeFragment extends Fragment {
     @Override
     public void onStop() {
         weatherHandler.removeCallbacksAndMessages(null);
+        cancelPendingLocationUpdate();
         try {
             requireContext().unregisterReceiver(wifiStateReceiver);
         } catch (IllegalArgumentException ignored) {
@@ -126,14 +140,19 @@ public class HomeFragment extends Fragment {
             titleView.setText("全效舱环境一体机");
             titleView.setTextColor(Color.rgb(36, 200, 217));
         }
-        if (weatherIconView != null) {
-            weatherIconView.setText(VALUE_PLACEHOLDER);
-        }
-        if (outdoorTempView != null) {
-            outdoorTempView.setText(VALUE_PLACEHOLDER);
-        }
-        if (outdoorStatusView != null) {
-            outdoorStatusView.setText(VALUE_PLACEHOLDER);
+        OpenMeteoWeatherClient.CurrentWeather cachedWeather = weatherClient.getCachedCurrentWeather();
+        if (cachedWeather != null) {
+            showOutdoorWeather(cachedWeather);
+        } else {
+            if (weatherIconView != null) {
+                weatherIconView.setText(VALUE_PLACEHOLDER);
+            }
+            if (outdoorTempView != null) {
+                outdoorTempView.setText(VALUE_PLACEHOLDER);
+            }
+            if (outdoorStatusView != null) {
+                outdoorStatusView.setText(VALUE_PLACEHOLDER);
+            }
         }
         if (adminIconView != null) {
             adminIconView.setImageResource(R.drawable.administrator);
@@ -187,23 +206,35 @@ public class HomeFragment extends Fragment {
     }
 
     private void scheduleWeatherRefresh(long delayMs) {
-        weatherHandler.removeCallbacksAndMessages(null);
+        weatherHandler.removeCallbacks(weatherRefreshRunnable);
         if (!isAdded()) {
             return;
         }
-        weatherHandler.postDelayed(this::loadOutdoorWeather, Math.max(0L, delayMs));
+        weatherHandler.postDelayed(weatherRefreshRunnable, Math.max(0L, delayMs));
     }
 
     private void loadOutdoorWeather() {
         if (!isAdded()) {
             return;
         }
-        weatherClient.fetchCurrentWeather(WEATHER_LATITUDE, WEATHER_LONGITUDE,
+        Location location = getLastKnownWeatherLocation();
+        if (location != null) {
+            fetchOutdoorWeather(location.getLatitude(), location.getLongitude());
+        } else {
+            fetchOutdoorWeather(FALLBACK_WEATHER_LATITUDE, FALLBACK_WEATHER_LONGITUDE);
+        }
+        requestLocationPermissionIfNeeded();
+        requestSingleLocationUpdate();
+    }
+
+    private void fetchOutdoorWeather(double latitude, double longitude) {
+        int requestSequence = ++weatherRequestSequence;
+        weatherClient.fetchCurrentWeather(latitude, longitude,
                 new OpenMeteoWeatherClient.Callback() {
                     @Override
                     public void onSuccess(OpenMeteoWeatherClient.CurrentWeather weather) {
                         weatherHandler.post(() -> {
-                            if (!isAdded()) {
+                            if (!isAdded() || requestSequence != weatherRequestSequence) {
                                 return;
                             }
                             showOutdoorWeather(weather);
@@ -214,12 +245,136 @@ public class HomeFragment extends Fragment {
                     @Override
                     public void onError(Exception error) {
                         weatherHandler.post(() -> {
-                            if (isAdded()) {
+                            if (isAdded() && requestSequence == weatherRequestSequence) {
                                 scheduleWeatherRefresh(WEATHER_REFRESH_INTERVAL_MS);
                             }
                         });
                     }
                 });
+    }
+
+    @Nullable
+    private Location getLastKnownWeatherLocation() {
+        if (!hasLocationPermission() || !isAdded()) {
+            return null;
+        }
+        LocationManager locationManager = (LocationManager) requireContext()
+                .getSystemService(Context.LOCATION_SERVICE);
+        if (locationManager == null) {
+            return null;
+        }
+        Location newestLocation = null;
+        String[] providers = {
+                LocationManager.GPS_PROVIDER,
+                LocationManager.NETWORK_PROVIDER,
+                LocationManager.PASSIVE_PROVIDER
+        };
+        for (String provider : providers) {
+            try {
+                Location location = locationManager.getLastKnownLocation(provider);
+                if (location != null && (newestLocation == null
+                        || location.getTime() > newestLocation.getTime())) {
+                    newestLocation = location;
+                }
+            } catch (SecurityException | IllegalArgumentException ignored) {
+            }
+        }
+        return newestLocation;
+    }
+
+    private void requestLocationPermissionIfNeeded() {
+        if (hasLocationPermission() || locationPermissionRequestInProgress || !isAdded()) {
+            return;
+        }
+        locationPermissionRequestInProgress = true;
+        requestPermissions(new String[]{
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+        }, LOCATION_PERMISSION_REQUEST_CODE);
+    }
+
+    private boolean hasLocationPermission() {
+        if (!isAdded()) {
+            return false;
+        }
+        Context context = requireContext();
+        return ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestSingleLocationUpdate() {
+        if (!hasLocationPermission() || locationUpdateInProgress || !isAdded()) {
+            return;
+        }
+        LocationManager locationManager = (LocationManager) requireContext()
+                .getSystemService(Context.LOCATION_SERVICE);
+        String provider = chooseLocationProvider(locationManager);
+        if (locationManager == null || provider == null) {
+            return;
+        }
+        weatherLocationManager = locationManager;
+        weatherLocationListener = location -> {
+            cancelPendingLocationUpdate();
+            if (isAdded()) {
+                fetchOutdoorWeather(location.getLatitude(), location.getLongitude());
+            }
+        };
+        locationUpdateInProgress = true;
+        try {
+            locationManager.requestSingleUpdate(provider, weatherLocationListener, Looper.getMainLooper());
+            weatherHandler.postDelayed(locationUpdateTimeout, LOCATION_UPDATE_TIMEOUT_MS);
+        } catch (SecurityException | IllegalArgumentException ignored) {
+            cancelPendingLocationUpdate();
+        }
+    }
+
+    @Nullable
+    private String chooseLocationProvider(@Nullable LocationManager locationManager) {
+        if (locationManager == null) {
+            return null;
+        }
+        String[] providers = {
+                LocationManager.NETWORK_PROVIDER,
+                LocationManager.GPS_PROVIDER,
+                LocationManager.PASSIVE_PROVIDER
+        };
+        for (String provider : providers) {
+            try {
+                if (locationManager.isProviderEnabled(provider)) {
+                    return provider;
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private void cancelPendingLocationUpdate() {
+        weatherHandler.removeCallbacks(locationUpdateTimeout);
+        if (weatherLocationManager != null && weatherLocationListener != null) {
+            try {
+                weatherLocationManager.removeUpdates(weatherLocationListener);
+            } catch (SecurityException ignored) {
+            }
+        }
+        weatherLocationManager = null;
+        weatherLocationListener = null;
+        locationUpdateInProgress = false;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != LOCATION_PERMISSION_REQUEST_CODE) {
+            return;
+        }
+        locationPermissionRequestInProgress = false;
+        if (hasLocationPermission()) {
+            scheduleWeatherRefresh(0L);
+        }
     }
 
     private void showOutdoorWeather(OpenMeteoWeatherClient.CurrentWeather weather) {
@@ -326,10 +481,8 @@ public class HomeFragment extends Fragment {
             buildMetricGrid(context, metricGrid);
             buildHumidityRow(context, humidityRow);
             buildModuleRow(context, moduleRow);
-            refreshHumidityModeButton();
-            refreshHumidityModeValue();
-            refreshSmartButtons();
-            refreshSupplyButtons();
+            restoreCachedIndoorState();
+            restoreCachedIndoorMetrics();
             return root;
         }
 
@@ -522,15 +675,70 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(Exception error) {
-                    showMetricPlaceholder(indoorPm25ValueView);
-                    showMetricPlaceholder(indoorCo2ValueView);
-                    showMetricPlaceholder(indoorTemperatureValueView);
-                    showMetricPlaceholder(indoorHumidityValueView);
-                    showMetricPlaceholder(indoorAbsoluteHumidityValueView);
+                    restoreCachedIndoorMetrics();
                     onFinished.run();
                 }
             });
             return 1;
+        }
+
+        private void restoreCachedIndoorState() {
+            if (!isAdded()) {
+                return;
+            }
+            DeviceGateway gateway = DeviceGateway.get(requireContext());
+            Integer humidityMode = gateway.getCachedValue(513);
+            Integer autoMode = gateway.getCachedValue(514);
+            Integer power = gateway.getCachedValue(515);
+            Integer smartMode = gateway.getCachedValue(100);
+            Integer manualSupplyMode = gateway.getCachedValue(141);
+            Integer realtimeSupplyMode = gateway.getCachedValue(996);
+            if (humidityMode != null) {
+                humidityModeIndex = clampIndex(humidityMode, HUMIDITY_MODES.length);
+            }
+            if (autoMode != null) {
+                humidityAutoMode = autoMode == 0;
+            }
+            if (power != null) {
+                switchOn = power == 1;
+            }
+            if (smartMode != null) {
+                smartModeEnabled = smartMode == 1;
+            }
+            if (manualSupplyMode != null) {
+                manualSupplyModeIndex = clampManualSupplyModeIndex(manualSupplyMode);
+            }
+            if (realtimeSupplyMode != null) {
+                realtimeSupplyModeIndex = clampIndex(realtimeSupplyMode, SUPPLY_MODES.length);
+            }
+            refreshHumidityModeButton();
+            refreshHumidityModeValue();
+            refreshSmartButtons();
+            refreshSupplyButtons();
+            updateSwitchButton();
+        }
+
+        private void restoreCachedIndoorMetrics() {
+            if (!isAdded()) {
+                return;
+            }
+            restoreCachedMetric(indoorPm25ValueView, 860);
+            restoreCachedMetric(indoorCo2ValueView, 861);
+            restoreCachedMetric(indoorTemperatureValueView, 863);
+            restoreCachedMetric(indoorHumidityValueView, 864);
+            restoreCachedMetric(indoorAbsoluteHumidityValueView, 865);
+        }
+
+        private void restoreCachedMetric(TextView view, int address) {
+            if (view == null || !isAdded()) {
+                return;
+            }
+            DeviceGateway gateway = DeviceGateway.get(requireContext());
+            Integer cachedValue = gateway.getCachedValue(address);
+            if (cachedValue != null) {
+                view.setTag(cachedValue);
+                view.setText(gateway.formatDefault(address, cachedValue));
+            }
         }
 
         private int refreshControlStateRange(Runnable onFinished) {
@@ -1022,7 +1230,7 @@ public class HomeFragment extends Fragment {
                 filterHost.removeAllViews();
                 filterHost.addView(buildFilterRow(context));
             }
-            refreshSummaryValues();
+            restoreCachedSmartAirValues();
             return root;
         }
 
@@ -1210,12 +1418,7 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(Exception error) {
-                    showValuePlaceholder(freshAirTemperatureValueView);
-                    showValuePlaceholder(freshAirHumidityValueView);
-                    showValuePlaceholder(supplyAirTemperatureValueView);
-                    showValuePlaceholder(supplyAirHumidityValueView);
-                    showValuePlaceholder(freshAirAbsoluteHumidityValueView);
-                    showValuePlaceholder(supplyAirAbsoluteHumidityValueView);
+                    restoreCachedSmartAirValues();
                     onPollReadFinished();
                 }
             });
@@ -1235,16 +1438,60 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(Exception error) {
-                    if (filterLifeProgressBar != null) {
-                        filterLifeProgressBar.setProgress(0);
-                    }
-                    if (filterLifeValueView != null) {
-                        filterLifeValueView.setText(VALUE_PLACEHOLDER);
-                    }
+                    restoreCachedFilterLife();
                     onPollReadFinished();
                 }
             });
             return 1;
+        }
+
+        private void restoreCachedSmartAirValues() {
+            if (!isAdded()) {
+                return;
+            }
+            DeviceGateway gateway = DeviceGateway.get(requireContext());
+            Integer cachedTemperatureSetting = gateway.getCachedValue(5);
+            Integer cachedHumiditySetting = gateway.getCachedValue(6);
+            Integer cachedSupplySetting = gateway.getCachedValue(15);
+            if (cachedTemperatureSetting != null) {
+                temperatureSetting = cachedTemperatureSetting;
+            }
+            if (cachedHumiditySetting != null) {
+                humiditySetting = cachedHumiditySetting;
+            }
+            if (cachedSupplySetting != null) {
+                supplySetting = cachedSupplySetting;
+            }
+            refreshSummaryValues();
+            restoreCachedSmartAirValue(freshAirTemperatureValueView, 500);
+            restoreCachedSmartAirValue(freshAirHumidityValueView, 501);
+            restoreCachedSmartAirValue(supplyAirTemperatureValueView, 502);
+            restoreCachedSmartAirValue(supplyAirHumidityValueView, 503);
+            restoreCachedSmartAirValue(freshAirAbsoluteHumidityValueView, 506);
+            restoreCachedSmartAirValue(supplyAirAbsoluteHumidityValueView, 507);
+            restoreCachedFilterLife();
+        }
+
+        private void restoreCachedSmartAirValue(TextView view, int address) {
+            if (view == null || !isAdded()) {
+                return;
+            }
+            DeviceGateway gateway = DeviceGateway.get(requireContext());
+            Integer cachedValue = gateway.getCachedValue(address);
+            if (cachedValue != null) {
+                view.setTag(cachedValue);
+                view.setText(gateway.formatDefault(address, cachedValue));
+            }
+        }
+
+        private void restoreCachedFilterLife() {
+            if (!isAdded()) {
+                return;
+            }
+            Integer cachedValue = DeviceGateway.get(requireContext()).getCachedValue(538);
+            if (cachedValue != null) {
+                updateFilterLife(cachedValue);
+            }
         }
 
         private void updateFilterLife(int value) {

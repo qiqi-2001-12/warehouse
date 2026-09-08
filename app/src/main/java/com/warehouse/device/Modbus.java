@@ -299,8 +299,14 @@ final class ModbusUi {
             return;
         }
         Context context = view.getContext();
-        view.setText((CharSequence)"--");
-        view.setTag((Object)spec.minValue);
+        Integer cachedValue = ModbusManager.get(context).getCachedValue(spec.address);
+        if (cachedValue != null) {
+            view.setText((CharSequence)formatter.format(spec, cachedValue));
+            view.setTag((Object)cachedValue);
+        } else {
+            view.setText((CharSequence)"--");
+            view.setTag((Object)spec.minValue);
+        }
         ModbusManager.get(context).read(spec, new ModbusManager.IntCallback(){
 
             @Override
@@ -311,7 +317,7 @@ final class ModbusUi {
 
             @Override
             public void onError(Exception error) {
-                if (spec.canRead()) {
+                if (spec.canRead() && ModbusManager.get(context).getCachedValue(spec.address) == null) {
                     view.setText((CharSequence)"--");
                 }
             }
@@ -528,6 +534,11 @@ final class ModbusManager {
             this.slaveId = slaveId;
             this.resetClient();
         }
+    }
+
+    @Nullable
+    Integer getCachedValue(int address) {
+        return this.localValues.get(address);
     }
 
     void read(ModbusRegisterSpec spec, IntCallback callback) {

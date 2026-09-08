@@ -245,6 +245,7 @@ public class FactoryParamsFragment extends Fragment {
         reads += refreshStatus(root, R.id.param2_makeup_valve_status, 954);
         reads += refreshStatus(root, R.id.param2_return_air_valve_status, 951);
         reads += refreshStatus(root, R.id.param2_exhaust_fan_status, 935);
+        reads += refreshValue(root, R.id.param2_supply_fan_speed_value, 15);
         reads += refreshValue(root, R.id.param2_compressor_freq_value, 512);
         reads += refreshValue(root, R.id.param2_compressor_freq_max_value, 17);
         reads += refreshValue(root, R.id.param2_compressor_freq_min_value, 16);
@@ -405,6 +406,7 @@ public class FactoryParamsFragment extends Fragment {
         bindStatus(root, R.id.param2_makeup_valve_status, 954);
         bindStatus(root, R.id.param2_return_air_valve_status, 951);
         bindStatus(root, R.id.param2_exhaust_fan_status, 935);
+        bindValue(root, R.id.param2_supply_fan_speed_value, 15);
         bindValue(root, R.id.param2_compressor_freq_value, 512);
         bindValue(root, R.id.param2_compressor_freq_max_value, 17);
         bindValue(root, R.id.param2_compressor_freq_min_value, 16);
@@ -485,8 +487,14 @@ public class FactoryParamsFragment extends Fragment {
             view.setText("--");
             return;
         }
-        view.setText("--");
-        view.setTag(gateway.minValue(address));
+        Integer cachedValue = gateway.getCachedValue(address);
+        if (cachedValue != null) {
+            view.setTag(cachedValue);
+            view.setText(gateway.formatDefault(address, cachedValue));
+        } else {
+            view.setText("--");
+            view.setTag(gateway.minValue(address));
+        }
         if (gateway.canWrite(address)) {
             view.setClickable(true);
             view.setFocusable(true);
@@ -499,8 +507,16 @@ public class FactoryParamsFragment extends Fragment {
         if (indicator == null) {
             return;
         }
-        indicator.setBackgroundResource(R.drawable.factory_status_light_placeholder);
-        if (!DeviceGateway.get(indicator.getContext()).canRead(address)) {
+        DeviceGateway gateway = DeviceGateway.get(indicator.getContext());
+        Integer cachedValue = gateway.getCachedValue(address);
+        if (cachedValue != null) {
+            indicator.setBackgroundResource(cachedValue == 1
+                    ? R.drawable.factory_status_light_green
+                    : R.drawable.factory_status_light_red);
+        } else {
+            indicator.setBackgroundResource(R.drawable.factory_status_light_placeholder);
+        }
+        if (!gateway.canRead(address)) {
             return;
         }
     }
