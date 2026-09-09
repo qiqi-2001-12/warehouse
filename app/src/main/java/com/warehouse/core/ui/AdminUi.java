@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -20,6 +21,10 @@ public final class AdminUi {
     public static final int TEXT_SECONDARY = Color.rgb(133, 191, 201);
     public static final int ACCENT = Color.rgb(36, 200, 217);
     public static final int INPUT_BG = Color.rgb(176, 170, 255);
+    public static final int CONTROL_BG = Color.argb(198, 7, 48, 88);
+    public static final int CONTROL_STROKE = Color.rgb(60, 154, 190);
+    public static final int SELECTED_CONTROL_BG = Color.rgb(15, 196, 225);
+    public static final int SELECTED_CONTROL_STROKE = Color.rgb(143, 238, 250);
 
     private AdminUi() {
     }
@@ -70,6 +75,29 @@ public final class AdminUi {
         return view;
     }
 
+    public static void styleCompactNumericInput(EditText input) {
+        Context context = input.getContext();
+        input.setTextColor(TEXT_PRIMARY);
+        input.setHintTextColor(TEXT_SECONDARY);
+        input.setTextSize(24);
+        input.setGravity(Gravity.CENTER);
+        input.setSingleLine(true);
+        input.setBackground(bg(Color.rgb(5, 35, 52), 4, ACCENT, 1, context));
+        input.setPadding(dp(context, 12), 0, dp(context, 12), 0);
+    }
+
+    public static int compactNumericInputWidth(Context context) {
+        return dp(context, 176);
+    }
+
+    public static int compactNumericInputHeight(Context context) {
+        return dp(context, 52);
+    }
+
+    public static int compactDialogWidth(Context context) {
+        return dp(context, 280);
+    }
+
     public static LinearLayout row(Context context) {
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -93,7 +121,7 @@ public final class AdminUi {
 
     public static TextView button(Context context, String value) {
         TextView button = text(context, value, 16, TEXT_PRIMARY, Typeface.BOLD);
-        button.setBackground(bg(Color.rgb(19, 72, 94), 6, PANEL_STROKE, 1, context));
+        button.setBackground(bg(CONTROL_BG, 6, CONTROL_STROKE, 1, context));
         button.setClickable(true);
         button.setFocusable(true);
         return button;
@@ -103,9 +131,9 @@ public final class AdminUi {
         Context context = button.getContext();
         button.setTextColor(selected ? Color.rgb(5, 34, 45) : TEXT_PRIMARY);
         button.setBackground(bg(
-                selected ? ACCENT : Color.rgb(19, 72, 94),
+                selected ? SELECTED_CONTROL_BG : CONTROL_BG,
                 6,
-                selected ? ACCENT : PANEL_STROKE,
+                selected ? SELECTED_CONTROL_STROKE : CONTROL_STROKE,
                 1,
                 context));
     }

@@ -44,9 +44,8 @@ public class FaultFragment extends Fragment {
         headerParams.topMargin = AdminUi.dp(requireContext(), 18);
         root.addView(header, headerParams);
 
-        TextView resetFault = AdminUi.text(requireContext(), "\u6545\u969c\u590d\u4f4d", 16, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+        TextView resetFault = AdminUi.button(requireContext(), "\u6545\u969c\u590d\u4f4d");
         resetFault.setGravity(Gravity.CENTER);
-        resetFault.setBackground(AdminUi.bg(Color.rgb(19, 72, 94), 6, Color.TRANSPARENT, 0, requireContext()));
         resetFault.setClickable(true);
         resetFault.setFocusable(true);
         resetFault.setOnClickListener(v -> writeConfirm(799));

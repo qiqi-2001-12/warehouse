@@ -873,21 +873,24 @@ public class HomeFragment extends Fragment {
             humidityContent.setGravity(Gravity.CENTER_VERTICAL);
             humidityRow.addView(humidityContent, AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-            TextView humidityLabel = AdminUi.text(context, "含湿量", 14, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
+            TextView humidityLabel = AdminUi.text(context, "含湿量", 14,
+                    AdminUi.TEXT_SECONDARY, Typeface.BOLD);
             humidityContent.addView(humidityLabel, AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            humidityLabel.setTextSize(18);
+            humidityLabel.setTextSize(20);
 
-            TextView humidityValue = AdminUi.text(context, VALUE_PLACEHOLDER, 42, AdminUi.ACCENT, Typeface.BOLD);
+            TextView humidityValue = AdminUi.text(context, VALUE_PLACEHOLDER, 54,
+                    Color.rgb(255, 200, 87), Typeface.BOLD);
             LinearLayout.LayoutParams humidityValueParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             humidityValueParams.leftMargin = AdminUi.dp(context, 10);
             humidityContent.addView(humidityValue, humidityValueParams);
             indoorAbsoluteHumidityValueView = humidityValue;
 
-            TextView humidityUnit = AdminUi.text(context, "g/kg", 14, AdminUi.TEXT_SECONDARY, Typeface.BOLD);
+            TextView humidityUnit = AdminUi.text(context, "g/kg", 16,
+                    AdminUi.TEXT_SECONDARY, Typeface.BOLD);
             LinearLayout.LayoutParams humidityUnitParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             humidityUnitParams.leftMargin = AdminUi.dp(context, 8);
             humidityContent.addView(humidityUnit, humidityUnitParams);
-            humidityUnit.setTextSize(18);
+            humidityUnit.setTextSize(22);
         }
 
         private void buildModuleRow(Context context, LinearLayout moduleRow) {
@@ -920,10 +923,10 @@ public class HomeFragment extends Fragment {
             valueRowParams.weight = 1;
             valueRow.setLayoutParams(valueRowParams);
 
-            TextView valueView = AdminUi.text(context, value, 42, valueColor, Typeface.NORMAL);
+            TextView valueView = AdminUi.text(context, value, 54, valueColor, Typeface.NORMAL);
             valueRow.addView(valueView, AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-            TextView unitView = AdminUi.text(context, unit, 16, AdminUi.TEXT_SECONDARY, Typeface.NORMAL);
+            TextView unitView = AdminUi.text(context, unit, 22, AdminUi.TEXT_SECONDARY, Typeface.NORMAL);
             LinearLayout.LayoutParams unitParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             unitParams.leftMargin = AdminUi.dp(context, 2);
             valueRow.addView(unitView, unitParams);
@@ -961,7 +964,8 @@ public class HomeFragment extends Fragment {
         private void addModeModule(Context context, LinearLayout parent, String titleText, boolean smartMode) {
             LinearLayout module = AdminUi.column(context);
             module.setPadding(AdminUi.dp(context, 16), AdminUi.dp(context, 16), AdminUi.dp(context, 16), AdminUi.dp(context, 16));
-            module.setBackground(AdminUi.bg(Color.rgb(9, 57, 80), 8, Color.rgb(18, 96, 118), 1, context));
+            module.setBackground(AdminUi.bg(Color.argb(190, 6, 44, 81), 8,
+                    Color.rgb(52, 139, 176), 1, context));
             LinearLayout.LayoutParams moduleParams = AdminUi.weightedLp(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
             if (parent.getChildCount() > 0) {
                 moduleParams.leftMargin = AdminUi.dp(context, 8);
@@ -1809,7 +1813,8 @@ public class HomeFragment extends Fragment {
                     InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
             InputDialogParts dialogParts = buildInputDialog(
                     context,
-                    percentRange ? title + " 0-100" : title,
+                    title,
+                    percentRange ? "\u5141\u8bb8\u8303\u56f4 0 - 100" : "\u8bf7\u8f93\u5165\u6570\u503c",
                     input);
             dialogParts.cancelButton.setOnClickListener(v -> dialogParts.dialog.dismiss());
             dialogParts.confirmButton.setOnClickListener(v -> {
@@ -1844,7 +1849,8 @@ public class HomeFragment extends Fragment {
                     InputType.TYPE_CLASS_NUMBER);
             InputDialogParts dialogParts = buildInputDialog(
                     context,
-                    title + " " + minValue + "-" + maxValue,
+                    title,
+                    "\u5141\u8bb8\u8303\u56f4 " + minValue + " - " + maxValue,
                     input);
             dialogParts.cancelButton.setOnClickListener(v -> dialogParts.dialog.dismiss());
             dialogParts.confirmButton.setOnClickListener(v -> {
@@ -1865,30 +1871,48 @@ public class HomeFragment extends Fragment {
             styleCompactDialog(dialogParts.dialog);
         }
 
-        private InputDialogParts buildInputDialog(Context context, String hint, EditText input) {
+        private InputDialogParts buildInputDialog(Context context, String title, String range, EditText input) {
             LinearLayout root = AdminUi.column(context);
             root.setGravity(Gravity.CENTER_HORIZONTAL);
-            root.setPadding(AdminUi.dp(context, 12), AdminUi.dp(context, 12), AdminUi.dp(context, 12), AdminUi.dp(context, 12));
+            root.setPadding(AdminUi.dp(context, 16), AdminUi.dp(context, 16), AdminUi.dp(context, 16), AdminUi.dp(context, 16));
             root.setBackground(AdminUi.bg(Color.BLACK, 8, AdminUi.PANEL_STROKE, 1, context));
+
+            TextView titleView = AdminUi.text(context, title, 20, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+            root.addView(titleView, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            TextView rangeView = AdminUi.text(context, range, 14, AdminUi.TEXT_SECONDARY, Typeface.NORMAL);
+            LinearLayout.LayoutParams rangeParams = AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            rangeParams.topMargin = AdminUi.dp(context, 4);
+            root.addView(rangeView, rangeParams);
+
+            View divider = new View(context);
+            divider.setBackgroundColor(AdminUi.PANEL_STROKE);
+            LinearLayout.LayoutParams dividerParams = AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 1));
+            dividerParams.topMargin = AdminUi.dp(context, 12);
+            root.addView(divider, dividerParams);
+
             input.setHint(INPUT_HINT_PLACEHOLDER);
 
-            LinearLayout.LayoutParams inputParams = AdminUi.lp(AdminUi.mm(context, 44), ViewGroup.LayoutParams.WRAP_CONTENT);
+            LinearLayout.LayoutParams inputParams = AdminUi.lp(
+                    AdminUi.compactNumericInputWidth(context),
+                    AdminUi.compactNumericInputHeight(context));
+            inputParams.topMargin = AdminUi.dp(context, 14);
             root.addView(input, inputParams);
 
             LinearLayout buttonRow = AdminUi.row(context);
             buttonRow.setGravity(Gravity.CENTER_VERTICAL);
             LinearLayout.LayoutParams buttonRowParams = AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            buttonRowParams.topMargin = AdminUi.dp(context, 12);
+            buttonRowParams.topMargin = AdminUi.dp(context, 16);
             root.addView(buttonRow, buttonRowParams);
 
             TextView cancelButton = createDialogActionButton(context, "\u53d6\u6d88", AdminUi.TEXT_SECONDARY, Color.rgb(12, 53, 73));
-            buttonRow.addView(cancelButton, AdminUi.weightedLp(0, AdminUi.dp(context, 54), 1));
+            buttonRow.addView(cancelButton, AdminUi.weightedLp(0, AdminUi.dp(context, 46), 1));
 
             View gap = new View(context);
             buttonRow.addView(gap, AdminUi.lp(AdminUi.dp(context, 10), 1));
 
             TextView confirmButton = createDialogActionButton(context, "\u786e\u5b9a", AdminUi.PAGE_BG, AdminUi.ACCENT);
-            buttonRow.addView(confirmButton, AdminUi.weightedLp(0, AdminUi.dp(context, 54), 1));
+            buttonRow.addView(confirmButton, AdminUi.weightedLp(0, AdminUi.dp(context, 46), 1));
 
             AlertDialog dialog = new AlertDialog.Builder(
                     new ContextThemeWrapper(context, R.style.BlackInputDialogTheme))
@@ -1902,12 +1926,7 @@ public class HomeFragment extends Fragment {
             input.setInputType(inputType);
             input.setText(value);
             input.setSelectAllOnFocus(true);
-            input.setSingleLine(true);
-            input.setTextColor(AdminUi.TEXT_PRIMARY);
-            input.setHintTextColor(AdminUi.TEXT_SECONDARY);
-            input.setTextSize(20);
-            input.setBackground(AdminUi.bg(Color.BLACK, 6, Color.rgb(42, 138, 155), 1, context));
-            input.setPadding(AdminUi.dp(context, 14), AdminUi.dp(context, 12), AdminUi.dp(context, 14), AdminUi.dp(context, 12));
+            AdminUi.styleCompactNumericInput(input);
             return input;
         }
 
@@ -1915,13 +1934,15 @@ public class HomeFragment extends Fragment {
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setBackgroundDrawable(
                         requireContext().getDrawable(R.drawable.input_dialog_black_bg));
-                dialog.getWindow().setLayout(AdminUi.mm(requireContext(), 58), ViewGroup.LayoutParams.WRAP_CONTENT);
+                dialog.getWindow().setLayout(
+                        AdminUi.compactDialogWidth(requireContext()),
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
             }
         }
 
         private TextView createDialogActionButton(Context context, String text, int textColor, int backgroundColor) {
-            TextView button = AdminUi.text(context, text, 18, textColor, Typeface.BOLD);
-            button.setBackground(AdminUi.bg(backgroundColor, 6, AdminUi.PANEL_STROKE, 1, context));
+            TextView button = AdminUi.text(context, text, 16, textColor, Typeface.BOLD);
+            button.setBackground(AdminUi.bg(backgroundColor, 4, AdminUi.PANEL_STROKE, 1, context));
             button.setClickable(true);
             button.setFocusable(true);
             return button;

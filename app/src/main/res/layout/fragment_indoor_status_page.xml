@@ -12,7 +12,7 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:padding="14dp"
-        android:background="#093950">
+        android:background="@android:color/transparent">
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -76,10 +76,11 @@
         <LinearLayout
             android:id="@+id/humidity_row"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="72dp"
             android:layout_marginTop="12dp"
             android:gravity="center"
-            android:orientation="horizontal" />
+            android:orientation="horizontal"
+            android:translationY="-16dp" />
 
         <LinearLayout
             android:id="@+id/module_row"

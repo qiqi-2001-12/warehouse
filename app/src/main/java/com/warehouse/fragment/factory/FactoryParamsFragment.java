@@ -72,7 +72,7 @@ public class FactoryParamsFragment extends Fragment {
         }
 
         pager = new ViewPager2(requireContext());
-        pager.setBackgroundColor(AdminUi.CARD_BG);
+        pager.setBackgroundResource(R.drawable.factory_params_panel_bg);
         pager.setOffscreenPageLimit(1);
         pager.setOverScrollMode(View.OVER_SCROLL_NEVER);
         pager.setAdapter(new FactoryParamsPagerAdapter());

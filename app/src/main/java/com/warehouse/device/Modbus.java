@@ -366,44 +366,78 @@ final class ModbusUi {
     private static void showNumericEditor(final Context context, final TextView targetView, final ModbusRegisterSpec spec, int currentValue, final ValueFormatter formatter) {
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(1);
-        root.setPadding(ModbusUi.dp(context, 18), ModbusUi.dp(context, 16), ModbusUi.dp(context, 18), ModbusUi.dp(context, 14));
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setPadding(ModbusUi.dp(context, 16), ModbusUi.dp(context, 16), ModbusUi.dp(context, 16), ModbusUi.dp(context, 16));
         root.setBackgroundColor(Color.BLACK);
+
+        TextView title = AdminUi.text(context, "\u53c2\u6570\u8bbe\u7f6e", 20, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+        root.addView(title, new LinearLayout.LayoutParams(-1, -2));
+
+        String rangeText = "\u5141\u8bb8\u8303\u56f4 " + spec.minValue + " - " + spec.maxValue;
+        if (spec.unit != null && !spec.unit.isEmpty()) {
+            rangeText += " " + spec.unit;
+        }
+        TextView range = AdminUi.text(context, rangeText, 14, AdminUi.TEXT_SECONDARY, Typeface.NORMAL);
+        LinearLayout.LayoutParams rangeParams = new LinearLayout.LayoutParams(-1, -2);
+        rangeParams.topMargin = ModbusUi.dp(context, 4);
+        root.addView(range, rangeParams);
+
+        View divider = new View(context);
+        divider.setBackgroundColor(AdminUi.PANEL_STROKE);
+        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, ModbusUi.dp(context, 1));
+        dividerParams.topMargin = ModbusUi.dp(context, 12);
+        root.addView(divider, dividerParams);
+
         EditText input = new EditText(context);
         input.setInputType(4098);
         input.setText((CharSequence)String.valueOf(currentValue));
-        input.setTextColor(-1);
-        input.setHintTextColor(Color.rgb((int)140, (int)180, (int)190));
-        input.setPadding(ModbusUi.dp(context, 12), ModbusUi.dp(context, 10), ModbusUi.dp(context, 12), ModbusUi.dp(context, 10));
-        input.setBackground(AdminUi.bg(Color.BLACK, 6, AdminUi.PANEL_STROKE, 1, context));
-        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(-1, -2);
+        AdminUi.styleCompactNumericInput(input);
+        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(
+                AdminUi.compactNumericInputWidth(context),
+                AdminUi.compactNumericInputHeight(context));
+        inputParams.topMargin = ModbusUi.dp(context, 14);
         root.addView((View)input, (ViewGroup.LayoutParams)inputParams);
+
+        LinearLayout actions = new LinearLayout(context);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(-1, -2);
+        actionsParams.topMargin = ModbusUi.dp(context, 16);
+        root.addView(actions, actionsParams);
+
         Context dialogContext = new ContextThemeWrapper(context, R.style.BlackInputDialogTheme);
-        final AlertDialog dialog = new AlertDialog.Builder(dialogContext).setView((View)root).setNegativeButton((CharSequence)"取消", null).setPositiveButton((CharSequence)"确定", null).create();
-        dialog.setOnShowListener(d -> {
-            ModbusUi.styleEditorDialog(dialog, context);
-            dialog.getButton(-1).setOnClickListener(v -> {
-                String text = input.getText() == null ? "" : input.getText().toString().trim();
-                try {
-                    final int value = spec.clamp(Integer.parseInt(text));
-                    ModbusUi.updateLocalValue(targetView, spec, formatter, value);
-                    dialog.dismiss();
-                    ModbusManager.get(context).write(spec, value, new ModbusManager.VoidCallback(){
+        final AlertDialog dialog = new AlertDialog.Builder(dialogContext).setView((View)root).create();
 
-                        @Override
-                        public void onSuccess() {
-                        }
+        TextView cancel = ModbusUi.createEditorActionButton(context, "\u53d6\u6d88", AdminUi.TEXT_SECONDARY, Color.rgb(12, 53, 73));
+        actions.addView(cancel, new LinearLayout.LayoutParams(0, ModbusUi.dp(context, 46), 1));
+        View gap = new View(context);
+        actions.addView(gap, new LinearLayout.LayoutParams(ModbusUi.dp(context, 10), 1));
+        TextView confirm = ModbusUi.createEditorActionButton(context, "\u786e\u5b9a", AdminUi.PAGE_BG, AdminUi.ACCENT);
+        actions.addView(confirm, new LinearLayout.LayoutParams(0, ModbusUi.dp(context, 46), 1));
 
-                        @Override
-                        public void onError(Exception error) {
-                            ModbusUi.showLocalWriteWarning(context);
-                        }
-                    });
-                }
-                catch (NumberFormatException e) {
-                    Toast.makeText((Context)context, (CharSequence)"请输入有效数值", (int)0).show();
-                }
-            });
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        confirm.setOnClickListener(v -> {
+            String text = input.getText() == null ? "" : input.getText().toString().trim();
+            try {
+                final int value = spec.clamp(Integer.parseInt(text));
+                ModbusUi.updateLocalValue(targetView, spec, formatter, value);
+                dialog.dismiss();
+                ModbusManager.get(context).write(spec, value, new ModbusManager.VoidCallback(){
+
+                    @Override
+                    public void onSuccess() {
+                    }
+
+                    @Override
+                    public void onError(Exception error) {
+                        ModbusUi.showLocalWriteWarning(context);
+                    }
+                });
+            }
+            catch (NumberFormatException e) {
+                Toast.makeText((Context)context, (CharSequence)"\u8bf7\u8f93\u5165\u6709\u6548\u6570\u503c", (int)0).show();
+            }
         });
+        dialog.setOnShowListener(d -> ModbusUi.styleEditorDialog(dialog, context));
         dialog.show();
     }
 
@@ -446,9 +480,16 @@ final class ModbusUi {
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(
                     context.getDrawable(R.drawable.input_dialog_black_bg));
+            dialog.getWindow().setLayout(
+                    AdminUi.compactDialogWidth(context),
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
         }
-        dialog.getButton(-1).setTextColor(AdminUi.ACCENT);
-        dialog.getButton(-2).setTextColor(AdminUi.TEXT_SECONDARY);
+        if (dialog.getButton(-1) != null) {
+            dialog.getButton(-1).setTextColor(AdminUi.ACCENT);
+        }
+        if (dialog.getButton(-2) != null) {
+            dialog.getButton(-2).setTextColor(AdminUi.TEXT_SECONDARY);
+        }
         int titleId = context.getResources().getIdentifier("alertTitle", "id", "android");
         TextView title = dialog.findViewById(titleId);
         if (title != null) {
@@ -465,6 +506,14 @@ final class ModbusUi {
                 }
             });
         }
+    }
+
+    private static TextView createEditorActionButton(Context context, String text, int textColor, int backgroundColor) {
+        TextView button = AdminUi.text(context, text, 16, textColor, Typeface.BOLD);
+        button.setBackground(AdminUi.bg(backgroundColor, 4, AdminUi.PANEL_STROKE, 1, context));
+        button.setClickable(true);
+        button.setFocusable(true);
+        return button;
     }
 
     private static void updateLocalValue(TextView targetView, ModbusRegisterSpec spec, ValueFormatter formatter, int value) {

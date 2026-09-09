@@ -26,6 +26,7 @@ import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+import com.warehouse.R;
 import com.warehouse.core.ui.AdminUi;
 import com.warehouse.core.ui.ScreenFit;
 
@@ -42,10 +43,10 @@ public class WifiSetupFragment extends Fragment {
             @Nullable Bundle savedInstanceState) {
         Context context = requireContext();
         FrameLayout root = new FrameLayout(context);
-        root.setBackgroundColor(AdminUi.PAGE_BG);
+        root.setBackgroundResource(R.drawable.beijing);
 
         LinearLayout panel = AdminUi.column(context);
-        panel.setBackgroundColor(AdminUi.PAGE_BG);
+        panel.setBackgroundColor(Color.TRANSPARENT);
         FrameLayout.LayoutParams panelParams = new FrameLayout.LayoutParams(480, 480, Gravity.CENTER);
         root.addView(panel, panelParams);
 
@@ -62,19 +63,19 @@ public class WifiSetupFragment extends Fragment {
         LinearLayout header = AdminUi.row(context);
         header.setPadding(AdminUi.dp(context, 20), 0, AdminUi.dp(context, 20), 0);
 
-        TextView back = AdminUi.text(context, "\u2039", 40, AdminUi.ACCENT, android.graphics.Typeface.NORMAL);
+        TextView back = AdminUi.text(context, "\u2190", 36, AdminUi.ACCENT, android.graphics.Typeface.BOLD);
         back.setContentDescription("Back");
         back.setClickable(true);
         back.setFocusable(true);
         back.setOnClickListener(v -> getParentFragmentManager().popBackStack());
-        header.addView(back, AdminUi.lp(AdminUi.dp(context, 48), ViewGroup.LayoutParams.MATCH_PARENT));
+        header.addView(back, AdminUi.lp(AdminUi.dp(context, 60), ViewGroup.LayoutParams.MATCH_PARENT));
 
         TextView title = AdminUi.text(context, "Wi-Fi \u914d\u7f51", 22, AdminUi.TEXT_PRIMARY,
                 android.graphics.Typeface.BOLD);
         header.addView(title, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
         View spacer = new View(context);
-        header.addView(spacer, AdminUi.lp(AdminUi.dp(context, 48), ViewGroup.LayoutParams.MATCH_PARENT));
+        header.addView(spacer, AdminUi.lp(AdminUi.dp(context, 60), ViewGroup.LayoutParams.MATCH_PARENT));
         return header;
     }
 
@@ -85,9 +86,10 @@ public class WifiSetupFragment extends Fragment {
                 AdminUi.dp(context, 44), AdminUi.dp(context, 28));
 
         TextView settingsButton = AdminUi.button(context, "\u524d\u5f80 Wi-Fi \u8bbe\u7f6e");
+        settingsButton.setTextSize(20);
         settingsButton.setOnClickListener(v -> openWifiSettings());
         content.addView(settingsButton, AdminUi.lp(
-                ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 56)));
+                AdminUi.dp(context, 280), AdminUi.dp(context, 46)));
 
         ImageView qrCode = new ImageView(context);
         qrCode.setBackgroundColor(Color.WHITE);
@@ -97,10 +99,10 @@ public class WifiSetupFragment extends Fragment {
         qrParams.topMargin = AdminUi.dp(context, 28);
         content.addView(qrCode, qrParams);
 
-        TextView macValue = AdminUi.text(context, "MAC: " + DEVICE_MAC, 17,
+        TextView macValue = AdminUi.text(context, "MAC: " + DEVICE_MAC, 21,
                 AdminUi.TEXT_PRIMARY, android.graphics.Typeface.BOLD);
         LinearLayout.LayoutParams macParams = AdminUi.lp(
-                ViewGroup.LayoutParams.WRAP_CONTENT, AdminUi.dp(context, 34));
+                ViewGroup.LayoutParams.WRAP_CONTENT, AdminUi.dp(context, 40));
         macParams.topMargin = AdminUi.dp(context, 14);
         content.addView(macValue, macParams);
         return content;
