@@ -545,7 +545,7 @@
             android:focusable="true"
             android:gravity="center"
             android:includeFontPadding="false"
-            android:text="--"
+            android:text="&#x81EA;&#x52A8;"
             android:textColor="#F4F0FF"
             android:textSize="19sp"
             android:textStyle="bold" />

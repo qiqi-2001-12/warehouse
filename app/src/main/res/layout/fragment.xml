@@ -3,7 +3,7 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/beijing">
+    android:background="@drawable/beijing_top">
 
     <LinearLayout
         android:id="@+id/panel"
@@ -33,6 +33,7 @@
                     android:id="@+id/tv_title"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
                     android:includeFontPadding="false"
@@ -109,20 +110,44 @@
                     android:gravity="center"
                     android:orientation="horizontal">
 
-                    <ImageView
-                        android:id="@+id/iv_admin"
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/administrator" />
+                    <FrameLayout
+                        android:id="@+id/admin_touch_target"
+                        android:layout_width="64dp"
+                        android:layout_height="56dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?android:attr/selectableItemBackgroundBorderless">
 
-                    <ImageView
-                        android:id="@+id/iv_wifi"
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
+                        <ImageView
+                            android:id="@+id/iv_admin"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:layout_gravity="center"
+                            android:clickable="false"
+                            android:importantForAccessibility="no"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/administrator" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:id="@+id/wifi_touch_target"
+                        android:layout_width="64dp"
+                        android:layout_height="56dp"
                         android:layout_marginStart="10dp"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/wifi" />
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?android:attr/selectableItemBackgroundBorderless">
+
+                        <ImageView
+                            android:id="@+id/iv_wifi"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:layout_gravity="center"
+                            android:clickable="false"
+                            android:importantForAccessibility="no"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/wifi" />
+                    </FrameLayout>
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

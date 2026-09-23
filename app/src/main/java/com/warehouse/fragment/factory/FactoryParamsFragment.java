@@ -47,13 +47,9 @@ public class FactoryParamsFragment extends Fragment {
         LinearLayout root = AdminUi.column(requireContext());
         LinearLayout header = AdminUi.row(requireContext());
         header.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams headerParams = AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(requireContext(), 42));
+        LinearLayout.LayoutParams headerParams = AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(requireContext(), 56));
         headerParams.topMargin = AdminUi.dp(requireContext(), 18);
         root.addView(header, headerParams);
-
-        TextView resetFactory = AdminUi.button(requireContext(), "\u6062\u590d\u51fa\u5382\u8bbe\u7f6e");
-        resetFactory.setOnClickListener(v -> writeConfirm(539));
-        header.addView(resetFactory, AdminUi.lp(AdminUi.dp(requireContext(), 144), AdminUi.dp(requireContext(), 40)));
 
         View spacer = new View(requireContext());
         LinearLayout.LayoutParams spacerParams = AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
@@ -65,7 +61,7 @@ public class FactoryParamsFragment extends Fragment {
             TextView tab = AdminUi.button(requireContext(), String.valueOf(i + 1));
             tab.setTextSize(15);
             tab.setOnClickListener(v -> selectPage(page, true));
-            LinearLayout.LayoutParams params = AdminUi.lp(AdminUi.dp(requireContext(), 44), AdminUi.dp(requireContext(), 32));
+            LinearLayout.LayoutParams params = AdminUi.lp(AdminUi.dp(requireContext(), 44), AdminUi.dp(requireContext(), 56));
             params.leftMargin = AdminUi.dp(requireContext(), 8);
             header.addView(tab, params);
             pageTabs[i] = tab;
@@ -223,129 +219,150 @@ public class FactoryParamsFragment extends Fragment {
     }
 
     private int refreshPage1(View root) {
-        int reads = 0;
-        reads += refreshValue(root, R.id.param1_env_temp_value, 902);
-        reads += refreshValue(root, R.id.param1_high_pressure_value, 919);
-        reads += refreshValue(root, R.id.param1_exhaust_temp_value, 900);
-        reads += refreshValue(root, R.id.param1_low_pressure_value, 918);
-        reads += refreshValue(root, R.id.param1_suction_temp_value, 903);
-        reads += refreshValue(root, R.id.param1_suction_superheat_value, 922);
-        reads += refreshValue(root, R.id.param1_evaporation_temp_value, 920);
-        reads += refreshValue(root, R.id.param1_exhaust_superheat_value, 923);
-        reads += refreshValue(root, R.id.param1_condensing_temp_value, 921);
-        reads += refreshValue(root, R.id.param1_outdoor_coil_temp_value, 901);
-        return reads;
+        return refreshRange(root, 900, 24,
+                valueBinding(R.id.param1_env_temp_value, 902),
+                valueBinding(R.id.param1_high_pressure_value, 919),
+                valueBinding(R.id.param1_exhaust_temp_value, 900),
+                valueBinding(R.id.param1_low_pressure_value, 918),
+                valueBinding(R.id.param1_suction_temp_value, 903),
+                valueBinding(R.id.param1_suction_superheat_value, 922),
+                valueBinding(R.id.param1_evaporation_temp_value, 920),
+                valueBinding(R.id.param1_exhaust_superheat_value, 923),
+                valueBinding(R.id.param1_condensing_temp_value, 921),
+                valueBinding(R.id.param1_outdoor_coil_temp_value, 901));
     }
 
     private int refreshPage2(View root) {
         int reads = 0;
-        reads += refreshStatus(root, R.id.param2_low_level_status, 947);
-        reads += refreshStatus(root, R.id.param2_humidifier_pump_status, 952);
-        reads += refreshStatus(root, R.id.param2_drain_valve_status, 953);
-        reads += refreshStatus(root, R.id.param2_makeup_valve_status, 954);
-        reads += refreshStatus(root, R.id.param2_return_air_valve_status, 951);
-        reads += refreshStatus(root, R.id.param2_exhaust_fan_status, 935);
-        reads += refreshValue(root, R.id.param2_supply_fan_speed_value, 15);
-        reads += refreshValue(root, R.id.param2_compressor_freq_value, 512);
-        reads += refreshValue(root, R.id.param2_compressor_freq_max_value, 17);
-        reads += refreshValue(root, R.id.param2_compressor_freq_min_value, 16);
-        reads += refreshValue(root, R.id.param2_expansion_valve_step_value, 524);
-        reads += refreshValue(root, R.id.param2_condenser_fan_value, 525);
+        reads += refreshRange(root, 15, 3,
+                valueBinding(R.id.param2_supply_fan_speed_value, 15),
+                valueBinding(R.id.param2_compressor_freq_max_value, 17),
+                valueBinding(R.id.param2_compressor_freq_min_value, 16));
+        reads += refreshRange(root, 512, 4,
+                valueBinding(R.id.param2_compressor_freq_value, 512));
+        reads += refreshRange(root, 524, 2,
+                valueBinding(R.id.param2_expansion_valve_step_value, 524),
+                valueBinding(R.id.param2_condenser_fan_value, 525));
+        reads += refreshRange(root, 935, 3,
+                statusBinding(R.id.param2_exhaust_fan_status, 935));
+        reads += refreshRange(root, 947, 8,
+                statusBinding(R.id.param2_low_level_status, 947),
+                statusBinding(R.id.param2_humidifier_pump_status, 952),
+                statusBinding(R.id.param2_drain_valve_status, 953),
+                statusBinding(R.id.param2_makeup_valve_status, 954),
+                statusBinding(R.id.param2_return_air_valve_status, 951));
         return reads;
     }
 
     private int refreshPage3(View root) {
         int reads = 0;
-        reads += refreshValue(root, R.id.param3_energy_fan_output_value, 143);
-        reads += refreshValue(root, R.id.param3_comfort_fan_output_value, 145);
-        reads += refreshValue(root, R.id.param3_boost_fan_output_value, 147);
-        reads += refreshValue(root, R.id.param3_energy_fresh_air_valve_value, 144);
-        reads += refreshValue(root, R.id.param3_comfort_fresh_air_valve_value, 146);
-        reads += refreshValue(root, R.id.param3_boost_fresh_air_valve_value, 148);
-        reads += refreshValue(root, R.id.param3_energy_exhaust_valve_value, 169);
-        reads += refreshValue(root, R.id.param3_comfort_exhaust_valve_value, 170);
-        reads += refreshValue(root, R.id.param3_boost_exhaust_valve_value, 171);
-        reads += refreshValue(root, R.id.param3_fresh_air_heater_max_output_value, 140);
-        reads += refreshValue(root, R.id.param3_supply_mode_button, 159);
+        reads += refreshRange(root, 140, 20,
+                valueBinding(R.id.param3_energy_fan_output_value, 143),
+                valueBinding(R.id.param3_comfort_fan_output_value, 145),
+                valueBinding(R.id.param3_boost_fan_output_value, 147),
+                valueBinding(R.id.param3_energy_fresh_air_valve_value, 144),
+                valueBinding(R.id.param3_comfort_fresh_air_valve_value, 146),
+                valueBinding(R.id.param3_boost_fresh_air_valve_value, 148),
+                valueBinding(R.id.param3_fresh_air_heater_max_output_value, 140),
+                valueBinding(R.id.param3_supply_mode_button, 159));
+        reads += refreshRange(root, 169, 3,
+                valueBinding(R.id.param3_energy_exhaust_valve_value, 169),
+                valueBinding(R.id.param3_comfort_exhaust_valve_value, 170),
+                valueBinding(R.id.param3_boost_exhaust_valve_value, 171));
         return reads;
+    }
+
+    private void updateRangeValue(View root, int viewId, int address, int startAddress, int[] values) {
+        TextView view = root.findViewById(viewId);
+        int index = address - startAddress;
+        if (view == null || index < 0 || values == null || index >= values.length) {
+            return;
+        }
+        // Preserve the value selected by the operator until the pending write completes.
+        if (viewId == R.id.param3_supply_mode_button && !view.isEnabled()) {
+            return;
+        }
+        int value = values[index];
+        DeviceGateway gateway = DeviceGateway.get(view.getContext());
+        view.setTag(value);
+        view.setText(gateway.formatDefault(address, value));
     }
 
     private int refreshPage4(View root) {
-        int reads = 0;
-        reads += refreshValue(root, R.id.param4_energy_pm25_limit_value, 151);
-        reads += refreshValue(root, R.id.param4_comfort_pm25_limit_value, 152);
-        reads += refreshValue(root, R.id.param4_pm25_rise_limit_value, 154);
-        reads += refreshValue(root, R.id.param4_energy_co2_limit_value, 149);
-        reads += refreshValue(root, R.id.param4_comfort_co2_limit_value, 150);
-        reads += refreshValue(root, R.id.param4_co2_rise_limit_value, 153);
-        return reads;
+        return refreshRange(root, 149, 6,
+                valueBinding(R.id.param4_energy_pm25_limit_value, 151),
+                valueBinding(R.id.param4_comfort_pm25_limit_value, 152),
+                valueBinding(R.id.param4_pm25_rise_limit_value, 154),
+                valueBinding(R.id.param4_energy_co2_limit_value, 149),
+                valueBinding(R.id.param4_comfort_co2_limit_value, 150),
+                valueBinding(R.id.param4_co2_rise_limit_value, 153));
     }
 
     private int refreshPage5(View root) {
-        int reads = 0;
-        reads += refreshValue(root, R.id.param5_preheat_temp_setpoint_value, 142);
-        reads += refreshValue(root, R.id.param5_preheat_ratio_adjust_value, 158);
-        reads += refreshValue(root, R.id.param5_boost_first_check_time_value, 155);
-        reads += refreshValue(root, R.id.param5_boost_force_to_energy_extra_time_value, 156);
-        reads += refreshValue(root, R.id.param5_boost_exit_energy_hold_time_value, 157);
-        return reads;
+        return refreshRange(root, 142, 17,
+                valueBinding(R.id.param5_preheat_temp_setpoint_value, 142),
+                valueBinding(R.id.param5_preheat_ratio_adjust_value, 158),
+                valueBinding(R.id.param5_boost_first_check_time_value, 155),
+                valueBinding(R.id.param5_boost_force_to_energy_extra_time_value, 156),
+                valueBinding(R.id.param5_boost_exit_energy_hold_time_value, 157));
     }
 
-    private int refreshValue(View root, int viewId, int address) {
-        TextView view = root.findViewById(viewId);
-        if (view == null) {
+    private int refreshRange(View root, int startAddress, int count, RangeBinding... bindings) {
+        DeviceGateway gateway = DeviceGateway.get(root.getContext());
+        if (!gateway.canRead(startAddress)) {
             return 0;
         }
-        DeviceGateway gateway = DeviceGateway.get(view.getContext());
-        if (!gateway.canRead(address)) {
-            view.setText("--");
-            return 0;
-        }
-        gateway.read(address, new DeviceGateway.IntCallback() {
+        gateway.readRange(startAddress, count, new DeviceGateway.RangeCallback() {
             @Override
-            public void onSuccess(int value) {
-                view.setTag(value);
-                view.setText(gateway.formatDefault(address, value));
-                onPollReadFinished();
-            }
-
-            @Override
-            public void onError(Exception error) {
-                if (!(view.getTag() instanceof Integer)) {
-                    view.setText("--");
+            public void onSuccess(int returnedStartAddress, int[] values) {
+                for (RangeBinding binding : bindings) {
+                    if (binding.status) {
+                        updateRangeStatus(root, binding.viewId, binding.address,
+                                returnedStartAddress, values);
+                    } else {
+                        updateRangeValue(root, binding.viewId, binding.address,
+                                returnedStartAddress, values);
+                    }
                 }
                 onPollReadFinished();
             }
+
+            @Override
+            public void onError(Exception error) {
+                onPollReadFinished();
+            }
         });
         return 1;
     }
 
-    private int refreshStatus(View root, int viewId, int address) {
+    private void updateRangeStatus(View root, int viewId, int address, int startAddress, int[] values) {
         View indicator = root.findViewById(viewId);
-        if (indicator == null) {
-            return 0;
+        int index = address - startAddress;
+        if (indicator == null || index < 0 || values == null || index >= values.length) {
+            return;
         }
-        DeviceGateway gateway = DeviceGateway.get(indicator.getContext());
-        if (!gateway.canRead(address)) {
-            indicator.setBackgroundResource(R.drawable.factory_status_light_placeholder);
-            return 0;
-        }
-        gateway.read(address, new DeviceGateway.IntCallback() {
-            @Override
-            public void onSuccess(int value) {
-                indicator.setBackgroundResource(value == 1
-                        ? R.drawable.factory_status_light_green
-                        : R.drawable.factory_status_light_red);
-                onPollReadFinished();
-            }
+        indicator.setBackgroundResource(values[index] == 1
+                ? R.drawable.factory_status_light_green : R.drawable.factory_status_light_red);
+    }
 
-            @Override
-            public void onError(Exception error) {
-                indicator.setBackgroundResource(R.drawable.factory_status_light_placeholder);
-                onPollReadFinished();
-            }
-        });
-        return 1;
+    private static RangeBinding valueBinding(int viewId, int address) {
+        return new RangeBinding(viewId, address, false);
+    }
+
+    private static RangeBinding statusBinding(int viewId, int address) {
+        return new RangeBinding(viewId, address, true);
+    }
+
+    private static final class RangeBinding {
+        private final int viewId;
+        private final int address;
+        private final boolean status;
+
+        RangeBinding(int viewId, int address, boolean status) {
+            this.viewId = viewId;
+            this.address = address;
+            this.status = status;
+        }
     }
 
     private void onPollReadFinished() {
@@ -437,6 +454,10 @@ public class FactoryParamsFragment extends Fragment {
         if (!gateway.canWrite(159)) {
             return;
         }
+        Integer cachedValue = gateway.getCachedValue(159);
+        int initialValue = cachedValue == null ? gateway.minValue(159) : cachedValue;
+        button.setTag(initialValue);
+        button.setText(gateway.formatDefault(159, initialValue));
         button.setOnClickListener(v -> {
             Object tag = button.getTag();
             int currentValue = tag instanceof Integer ? (Integer) tag : gateway.maxValue(159);

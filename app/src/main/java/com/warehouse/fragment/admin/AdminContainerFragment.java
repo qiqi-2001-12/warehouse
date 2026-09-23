@@ -25,17 +25,20 @@ public class AdminContainerFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_admin_container, container, false);
-        TextView back = root.findViewById(R.id.btn_back);
+        View backTouchTarget = root.findViewById(R.id.btn_back_touch_target);
         faultTab = root.findViewById(R.id.tab_fault);
         factoryTab = root.findViewById(R.id.tab_factory);
         contentId = R.id.admin_content;
 
         ScreenFit.bind(root, root.findViewById(R.id.admin_shell));
 
-        back.setOnClickListener(v -> getParentFragmentManager().popBackStack());
+        AdminUi.addPressFeedback(backTouchTarget);
+        backTouchTarget.setOnClickListener(v -> getParentFragmentManager().popBackStack());
+        AdminUi.addPressFeedback(faultTab);
+        AdminUi.addPressFeedback(factoryTab);
         faultTab.setOnClickListener(v -> showPage(new FaultFragment(), faultTab));
         factoryTab.setOnClickListener(v -> showPage(new FactoryParamsFragment(), factoryTab));
-        showPage(new FaultFragment(), faultTab);
+        showPage(new FactoryParamsFragment(), factoryTab);
         return root;
     }
 

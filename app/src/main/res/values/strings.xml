@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">WareHouse</string>
+    <string name="remote_agent_base_url" translatable="false">http://192.168.60.111:8080</string>
+    <string name="remote_agent_device_key" translatable="false">change-device-key-before-production</string>
+    <string name="remote_agent_serial_no" translatable="false">WH-001</string>
+    <string name="remote_agent_device_name" translatable="false">全效舱环境一体机</string>
+    <string name="remote_agent_channel_name">远程控制代理</string>
+    <string name="remote_agent_notification_title">远程控制已连接</string>
+    <string name="remote_agent_notification_text">设备正在等待后台控制命令</string>
 </resources>

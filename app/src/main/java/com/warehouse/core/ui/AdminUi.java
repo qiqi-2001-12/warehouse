@@ -4,6 +4,8 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
+import android.content.res.ColorStateList;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -124,7 +126,17 @@ public final class AdminUi {
         button.setBackground(bg(CONTROL_BG, 6, CONTROL_STROKE, 1, context));
         button.setClickable(true);
         button.setFocusable(true);
+        addPressFeedback(button);
         return button;
+    }
+
+    /** Adds a theme-colored pressed overlay without changing the control's background. */
+    public static void addPressFeedback(View view) {
+        if (view == null) {
+            return;
+        }
+        view.setForeground(new RippleDrawable(
+                ColorStateList.valueOf(Color.argb(120, 36, 200, 217)), null, null));
     }
 
     public static void setSelected(TextView button, boolean selected) {

@@ -64,6 +64,8 @@ public class HomeFragment extends Fragment {
     private TextView outdoorStatusView;
     private ImageView adminIconView;
     private ImageView wifiIconView;
+    private View adminTouchTarget;
+    private View wifiTouchTarget;
     private final Handler weatherHandler = new Handler(Looper.getMainLooper());
     private final OpenMeteoWeatherClient weatherClient = new OpenMeteoWeatherClient();
     private final Runnable weatherRefreshRunnable = this::loadOutdoorWeather;
@@ -124,6 +126,8 @@ public class HomeFragment extends Fragment {
         outdoorStatusView = root.findViewById(R.id.tv_outdoor_status);
         adminIconView = root.findViewById(R.id.iv_admin);
         wifiIconView = root.findViewById(R.id.iv_wifi);
+        adminTouchTarget = root.findViewById(R.id.admin_touch_target);
+        wifiTouchTarget = root.findViewById(R.id.wifi_touch_target);
     }
 
     private void setupPager() {
@@ -157,13 +161,21 @@ public class HomeFragment extends Fragment {
         if (adminIconView != null) {
             adminIconView.setImageResource(R.drawable.administrator);
             ImageViewCompat.setImageTintList(adminIconView, ColorStateList.valueOf(AdminUi.ACCENT));
-            adminIconView.setOnClickListener(v -> openAdminPage());
+            if (adminTouchTarget != null) {
+                adminTouchTarget.setContentDescription("Administrator");
+                AdminUi.addPressFeedback(adminTouchTarget);
+                adminTouchTarget.setOnClickListener(v -> openAdminPage());
+            }
         }
         if (wifiIconView != null) {
             wifiIconView.setImageResource(R.drawable.wifi);
             ImageViewCompat.setImageTintList(wifiIconView, ColorStateList.valueOf(AdminUi.ACCENT));
             wifiIconView.setContentDescription("Wi-Fi setup");
-            wifiIconView.setOnClickListener(v -> openWifiPage());
+            if (wifiTouchTarget != null) {
+                wifiTouchTarget.setContentDescription("Wi-Fi setup");
+                AdminUi.addPressFeedback(wifiTouchTarget);
+                wifiTouchTarget.setOnClickListener(v -> openWifiPage());
+            }
         }
     }
 
@@ -377,6 +389,16 @@ public class HomeFragment extends Fragment {
         }
     }
 
+    public void refreshFilterLife() {
+        if (pager == null) {
+            return;
+        }
+        Fragment page = getChildFragmentManager().findFragmentByTag("f" + 1);
+        if (page instanceof SmartModePageFragment) {
+            ((SmartModePageFragment) page).triggerFilterLifeRefresh();
+        }
+    }
+
     private void showOutdoorWeather(OpenMeteoWeatherClient.CurrentWeather weather) {
         if (weatherIconView != null) {
             weatherIconView.setText(weather.getCondition().getIcon());
@@ -418,8 +440,9 @@ public class HomeFragment extends Fragment {
         private boolean humidityAutoMode = true;
         private int humidityModeIndex = 0;
         private boolean smartModeEnabled = true;
-        private int manualSupplyModeIndex = 1;
-        private int realtimeSupplyModeIndex = 0;
+        private int manualSupplyModeIndex = -1;
+        private int realtimeSupplyModeIndex = -1;
+        private int lastAutomaticSupplyModeIndex = -1;
         private boolean pollingActive;
         private boolean metricPollInFlight;
         private boolean statePollInFlight;
@@ -471,11 +494,18 @@ public class HomeFragment extends Fragment {
 
             if (autoButton != null) {
                 autoButton.setText("自动");
-                autoButton.setOnClickListener(v -> writeIntValue(514, humidityAutoMode ? 1 : 0, value -> {
-                    humidityAutoMode = value == 0;
-                    refreshHumidityModeButton();
-                    refreshSupplyButtons();
-                }));
+                autoButton.setOnClickListener(v -> {
+                    boolean switchingToManual = humidityAutoMode;
+                    int lastAutomaticMode = lastAutomaticSupplyModeIndex;
+                    writeIntValue(202, humidityAutoMode ? 1 : 0, value -> {
+                        humidityAutoMode = value == 0;
+                        if (switchingToManual && !humidityAutoMode) {
+                            applyLastAutomaticSupplyMode(lastAutomaticMode);
+                        }
+                        refreshHumidityModeButton();
+                        refreshSupplyButtons();
+                    });
+                });
             }
 
             buildMetricGrid(context, metricGrid);
@@ -591,6 +621,15 @@ public class HomeFragment extends Fragment {
             statePollInFlight = true;
             pendingStateReads = reads;
             refreshControlStateRange(this::onStatePollReadFinished);
+            refreshState(202, value -> {
+                humidityAutoMode = value == 0;
+                refreshHumidityModeButton();
+                refreshSupplyButtons();
+            }, this::onStatePollReadFinished);
+            refreshState(515, value -> {
+                switchOn = value == 1;
+                updateSwitchButton();
+            }, this::onStatePollReadFinished);
             refreshState(100, value -> {
                 smartModeEnabled = value == 1;
                 refreshSmartButtons();
@@ -601,6 +640,9 @@ public class HomeFragment extends Fragment {
             }, this::onStatePollReadFinished);
             refreshState(996, value -> {
                 realtimeSupplyModeIndex = clampIndex(value, SUPPLY_MODES.length);
+                if (humidityAutoMode) {
+                    lastAutomaticSupplyModeIndex = realtimeSupplyModeIndex;
+                }
                 refreshSupplyButtons();
             }, this::onStatePollReadFinished);
         }
@@ -612,6 +654,8 @@ public class HomeFragment extends Fragment {
         private int countStateReads() {
             int reads = 0;
             reads += hasReadableControlStateRange() ? 1 : 0;
+            reads += canReadAddress(202) ? 1 : 0;
+            reads += canReadAddress(515) ? 1 : 0;
             reads += canReadAddress(100) ? 1 : 0;
             reads += canReadAddress(141) ? 1 : 0;
             reads += canReadAddress(996) ? 1 : 0;
@@ -627,7 +671,7 @@ public class HomeFragment extends Fragment {
         }
 
         private boolean hasReadableControlStateRange() {
-            return canReadAddress(513) || canReadAddress(514) || canReadAddress(515);
+            return canReadAddress(513);
         }
 
         private boolean canReadValue(TextView view, int address) {
@@ -688,7 +732,7 @@ public class HomeFragment extends Fragment {
             }
             DeviceGateway gateway = DeviceGateway.get(requireContext());
             Integer humidityMode = gateway.getCachedValue(513);
-            Integer autoMode = gateway.getCachedValue(514);
+            Integer autoMode = gateway.getCachedValue(202);
             Integer power = gateway.getCachedValue(515);
             Integer smartMode = gateway.getCachedValue(100);
             Integer manualSupplyMode = gateway.getCachedValue(141);
@@ -710,6 +754,9 @@ public class HomeFragment extends Fragment {
             }
             if (realtimeSupplyMode != null) {
                 realtimeSupplyModeIndex = clampIndex(realtimeSupplyMode, SUPPLY_MODES.length);
+                if (humidityAutoMode) {
+                    lastAutomaticSupplyModeIndex = realtimeSupplyModeIndex;
+                }
             }
             refreshHumidityModeButton();
             refreshHumidityModeValue();
@@ -745,16 +792,11 @@ public class HomeFragment extends Fragment {
             if (!hasReadableControlStateRange()) {
                 return 0;
             }
-            DeviceGateway.get(requireContext()).readRange(513, 3, new DeviceGateway.RangeCallback() {
+            DeviceGateway.get(requireContext()).readRange(513, 1, new DeviceGateway.RangeCallback() {
                 @Override
                 public void onSuccess(int startAddress, int[] values) {
                     humidityModeIndex = clampIndex(rangeValue(startAddress, values, 513), HUMIDITY_MODES.length);
-                    humidityAutoMode = rangeValue(startAddress, values, 514) == 0;
-                    switchOn = rangeValue(startAddress, values, 515) == 1;
                     refreshHumidityModeValue();
-                    refreshHumidityModeButton();
-                    refreshSupplyButtons();
-                    updateSwitchButton();
                     onFinished.run();
                 }
 
@@ -949,6 +991,9 @@ public class HomeFragment extends Fragment {
 
             humidityModeValue = AdminUi.text(context, getHumidityModeText(), 22, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
             humidityModeValue.setGravity(Gravity.CENTER_VERTICAL);
+            humidityModeValue.setClickable(true);
+            humidityModeValue.setFocusable(true);
+            humidityModeValue.setOnClickListener(v -> showHumidityModeDialog());
             LinearLayout.LayoutParams humidityModeValueParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             humidityModeValueParams.leftMargin = AdminUi.dp(context, 6);
             humidityModeValueParams.rightMargin = AdminUi.dp(context, 6);
@@ -1056,6 +1101,70 @@ public class HomeFragment extends Fragment {
             });
         }
 
+        private void showHumidityModeDialog() {
+            if (humidityAutoMode || !isAdded()) {
+                return;
+            }
+            Context context = requireContext();
+            LinearLayout content = AdminUi.column(context);
+            content.setPadding(AdminUi.dp(context, 20), AdminUi.dp(context, 18),
+                    AdminUi.dp(context, 20), AdminUi.dp(context, 20));
+
+            TextView title = AdminUi.text(context, "选择运行模式", 22,
+                    AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+            title.setGravity(Gravity.CENTER_HORIZONTAL);
+            content.addView(title, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT,
+                    AdminUi.dp(context, 38)));
+
+            AlertDialog dialog = new AlertDialog.Builder(
+                    new ContextThemeWrapper(context, R.style.BlackInputDialogTheme))
+                    .setView(content)
+                    .create();
+            for (int rowIndex = 0; rowIndex < HUMIDITY_MODES.length; rowIndex += 3) {
+                LinearLayout row = AdminUi.row(context);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                LinearLayout.LayoutParams rowParams = AdminUi.lp(
+                        ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 58));
+                if (rowIndex > 0) {
+                    rowParams.topMargin = AdminUi.dp(context, 12);
+                }
+                content.addView(row, rowParams);
+                for (int column = 0; column < 3 && rowIndex + column < HUMIDITY_MODES.length; column++) {
+                    int position = rowIndex + column;
+                    TextView option = AdminUi.text(context, HUMIDITY_MODES[position], 18,
+                            position == humidityModeIndex ? AdminUi.PAGE_BG : AdminUi.ACCENT,
+                            Typeface.BOLD);
+                    option.setBackgroundResource(position == humidityModeIndex
+                            ? R.drawable.humidity_switch_on_bg
+                            : R.drawable.humidity_switch_off_bg);
+                    option.setClickable(true);
+                    option.setFocusable(true);
+                    LinearLayout.LayoutParams optionParams = AdminUi.weightedLp(0,
+                            AdminUi.dp(context, 54), 1);
+                    optionParams.leftMargin = column == 0 ? 0 : AdminUi.dp(context, 6);
+                    optionParams.rightMargin = column == 2 ? 0 : AdminUi.dp(context, 6);
+                    row.addView(option, optionParams);
+                    option.setOnClickListener(v -> {
+                        writeIntValue(513, position, value -> {
+                            humidityModeIndex = clampIndex(value, HUMIDITY_MODES.length);
+                            refreshHumidityModeValue();
+                        });
+                        dialog.dismiss();
+                    });
+                }
+            }
+            dialog.setOnShowListener(d -> {
+                if (dialog.getWindow() != null) {
+                    dialog.getWindow().setBackgroundDrawable(
+                            context.getDrawable(R.drawable.input_dialog_black_bg));
+                    int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
+                    int dialogWidth = Math.min(screenWidth - AdminUi.dp(context, 32), AdminUi.dp(context, 520));
+                    dialog.getWindow().setLayout(dialogWidth, ViewGroup.LayoutParams.WRAP_CONTENT);
+                }
+            });
+            dialog.show();
+        }
+
         private void refreshHumidityModeButton() {
             if (autoButton != null) {
                 autoButton.setText(humidityAutoMode ? "自动" : "手动");
@@ -1068,6 +1177,7 @@ public class HomeFragment extends Fragment {
 
         private void setHumidityModeButtonsEnabled(boolean enabled) {
             setHumidityModeButtonEnabled(leftHumidityModeButton, enabled);
+            setHumidityModeButtonEnabled(humidityModeValue, enabled);
             setHumidityModeButtonEnabled(rightHumidityModeButton, enabled);
         }
 
@@ -1114,6 +1224,9 @@ public class HomeFragment extends Fragment {
 
         private String getSupplyModeText() {
             int modeIndex = humidityAutoMode ? realtimeSupplyModeIndex : manualSupplyModeIndex;
+            if (modeIndex < 0 || modeIndex >= SUPPLY_MODES.length) {
+                return VALUE_PLACEHOLDER;
+            }
             return SUPPLY_MODES[modeIndex];
         }
 
@@ -1121,7 +1234,8 @@ public class HomeFragment extends Fragment {
             if (humidityAutoMode) {
                 return;
             }
-            int nextMode = manualSupplyModeIndex >= 3 ? 1 : manualSupplyModeIndex + 1;
+            int nextMode = manualSupplyModeIndex < 1 || manualSupplyModeIndex >= 3
+                    ? 1 : manualSupplyModeIndex + 1;
             writeIntValue(141, nextMode, value -> {
                 manualSupplyModeIndex = clampManualSupplyModeIndex(value);
                 refreshSupplyButtons();
@@ -1130,6 +1244,23 @@ public class HomeFragment extends Fragment {
 
         private int clampManualSupplyModeIndex(int value) {
             return Math.max(1, Math.min(3, value));
+        }
+
+        private void applyLastAutomaticSupplyMode(int mode) {
+            if (mode < 1) {
+                manualSupplyModeIndex = -1;
+                refreshSupplyButtons();
+                return;
+            }
+            manualSupplyModeIndex = clampIndex(mode, SUPPLY_MODES.length);
+            if (manualSupplyModeIndex == 0) {
+                refreshSupplyButtons();
+                return;
+            }
+            writeIntValue(141, manualSupplyModeIndex, value -> {
+                manualSupplyModeIndex = clampManualSupplyModeIndex(value);
+                refreshSupplyButtons();
+            });
         }
 
         private String getHumidityModeText() {
@@ -1151,16 +1282,8 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(Exception error) {
-                    showLocalWriteWarning();
                 }
             });
-        }
-
-        private void showLocalWriteWarning() {
-            if (!isAdded()) {
-                return;
-            }
-            Toast.makeText(requireContext(), "\u4e3b\u63a7\u677f\u672a\u54cd\u5e94\uff0c\u754c\u9762\u5df2\u672c\u5730\u66f4\u65b0", Toast.LENGTH_SHORT).show();
         }
 
         private int clampIndex(int value, int length) {
@@ -1273,6 +1396,24 @@ public class HomeFragment extends Fragment {
             outState.putInt(STATE_TEMPERATURE_SETTING, temperatureSetting);
             outState.putInt(STATE_HUMIDITY_SETTING, humiditySetting);
             outState.putInt(STATE_SUPPLY_SETTING, supplySetting);
+        }
+
+        public void triggerFilterLifeRefresh() {
+            if (!isAdded() || !hasReadableFilterLife()) {
+                return;
+            }
+            DeviceGateway.get(requireContext()).read(538, new DeviceGateway.IntCallback() {
+                @Override
+                public void onSuccess(int value) {
+                    if (isAdded()) {
+                        updateFilterLife(value);
+                    }
+                }
+
+                @Override
+                public void onError(Exception error) {
+                }
+            });
         }
 
         private void startPolling() {
@@ -1391,7 +1532,7 @@ public class HomeFragment extends Fragment {
                 public void onSuccess(int value) {
                     consumer.accept(value);
                     view.setTag(value);
-                    view.setText(String.valueOf(value));
+                    view.setText(formatSettingValue(address, value));
                     onPollReadFinished();
                 }
 
@@ -1688,12 +1829,12 @@ public class HomeFragment extends Fragment {
             temperatureValueView = temperatureItem.valueView;
             temperatureItem.container.setOnClickListener(v -> showIntegerInputDialog(
                     "\u6e29\u5ea6\u8bbe\u5b9a",
-                    temperatureSetting,
+                    displaySettingValue(5, temperatureSetting),
                     10,
                     50,
                     value -> {
-                        writeSettingValue(5, value, () -> {
-                            temperatureSetting = value;
+                        writeSettingValue(5, rawSettingValue(5, value), () -> {
+                            temperatureSetting = rawSettingValue(5, value);
                             refreshSummaryValues();
                         });
                     }));
@@ -1707,12 +1848,12 @@ public class HomeFragment extends Fragment {
             humidityValueView = humidityItem.valueView;
             humidityItem.container.setOnClickListener(v -> showIntegerInputDialog(
                     "\u6e7f\u5ea6\u8bbe\u5b9a",
-                    humiditySetting,
+                    displaySettingValue(6, humiditySetting),
                     30,
                     100,
                     value -> {
-                        writeSettingValue(6, value, () -> {
-                            humiditySetting = value;
+                        writeSettingValue(6, rawSettingValue(6, value), () -> {
+                            humiditySetting = rawSettingValue(6, value);
                             refreshSummaryValues();
                         });
                     }));
@@ -1726,12 +1867,12 @@ public class HomeFragment extends Fragment {
             supplyValueView = supplyItem.valueView;
             supplyItem.container.setOnClickListener(v -> showIntegerInputDialog(
                     "\u9001\u98ce\u91cf",
-                    supplySetting,
+                    displaySettingValue(15, supplySetting),
                     50,
                     100,
                     value -> {
-                        writeSettingValue(15, value, () -> {
-                            supplySetting = value;
+                        writeSettingValue(15, rawSettingValue(15, value), () -> {
+                            supplySetting = rawSettingValue(15, value);
                             refreshSummaryValues();
                         });
                     }));
@@ -1766,14 +1907,32 @@ public class HomeFragment extends Fragment {
 
         private void refreshSummaryValues() {
             if (temperatureValueView != null) {
-                temperatureValueView.setText(temperatureSetting < 0 ? VALUE_PLACEHOLDER : String.valueOf(temperatureSetting));
+                temperatureValueView.setText(temperatureSetting < 0
+                        ? VALUE_PLACEHOLDER : formatSettingValue(5, temperatureSetting));
             }
             if (humidityValueView != null) {
-                humidityValueView.setText(humiditySetting < 0 ? VALUE_PLACEHOLDER : String.valueOf(humiditySetting));
+                humidityValueView.setText(humiditySetting < 0
+                        ? VALUE_PLACEHOLDER : formatSettingValue(6, humiditySetting));
             }
             if (supplyValueView != null) {
-                supplyValueView.setText(supplySetting < 0 ? VALUE_PLACEHOLDER : String.valueOf(supplySetting));
+                supplyValueView.setText(supplySetting < 0
+                        ? VALUE_PLACEHOLDER : formatSettingValue(15, supplySetting));
             }
+        }
+
+        private String formatSettingValue(int address, int rawValue) {
+            return DeviceGateway.get(requireContext()).formatDefault(address, rawValue);
+        }
+
+        private int displaySettingValue(int address, int rawValue) {
+            if (rawValue < 0) {
+                return rawValue;
+            }
+            return DeviceGateway.get(requireContext()).toDisplayValue(address, rawValue);
+        }
+
+        private int rawSettingValue(int address, int displayValue) {
+            return DeviceGateway.get(requireContext()).toRawValue(address, displayValue);
         }
 
         private void writeSettingValue(int address, int value, Runnable onSuccess) {
@@ -1790,16 +1949,9 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(Exception error) {
-                    showLocalWriteWarning();
+                    requestImmediatePoll();
                 }
             });
-        }
-
-        private void showLocalWriteWarning() {
-            if (!isAdded()) {
-                return;
-            }
-            Toast.makeText(requireContext(), "\u4e3b\u63a7\u677f\u672a\u54cd\u5e94\uff0c\u754c\u9762\u5df2\u672c\u5730\u66f4\u65b0", Toast.LENGTH_SHORT).show();
         }
 
         private void showDecimalInputDialog(String title, double currentValue, boolean percentRange, DoubleValueConsumer onValueConfirmed) {
@@ -1970,13 +2122,15 @@ public class HomeFragment extends Fragment {
             progressBar.setProgress(0);
             progressBar.setProgressDrawable(context.getDrawable(R.drawable.progress_filter));
             filterLifeProgressBar = progressBar;
-            LinearLayout.LayoutParams progressParams = AdminUi.weightedLp(0, AdminUi.dp(context, 16), 1);
+            LinearLayout.LayoutParams progressParams = AdminUi.lp(AdminUi.dp(context, 400), AdminUi.dp(context, 16));
             progressParams.leftMargin = AdminUi.dp(context, 8);
             progressParams.rightMargin = AdminUi.dp(context, 8);
             filterRow.addView(progressBar, progressParams);
 
             TextView progressText = AdminUi.text(context, VALUE_PLACEHOLDER, 13, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
-            filterRow.addView(progressText, AdminUi.lp(AdminUi.dp(context, 40), ViewGroup.LayoutParams.WRAP_CONTENT));
+            progressText.setSingleLine(true);
+            progressText.setEllipsize(null);
+            filterRow.addView(progressText, AdminUi.lp(AdminUi.dp(context, 60), ViewGroup.LayoutParams.MATCH_PARENT));
             progressText.setTextSize(18);
             filterLifeValueView = progressText;
             return filterRow;

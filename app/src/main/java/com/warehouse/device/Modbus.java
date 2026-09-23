@@ -33,9 +33,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -77,7 +78,7 @@ final class ModbusTable {
                 ModbusRegisterSpec.Kind.BOOLEAN, 0, 1, "",
                 new ModbusRegisterSpec.EnumOption[] {
                         ModbusTable.option(0, "正常"), ModbusTable.option(1, "故障")
-                }, 1, 6);
+                });
     }
 
     private static ModbusRegisterSpec woBool(int address, ModbusRegisterSpec.EnumOption ... options) {
@@ -99,7 +100,7 @@ final class ModbusTable {
     static {
         ModbusTable.register(ModbusTable.rwBool(515, 0, 1, ModbusTable.option(0, "关机"), ModbusTable.option(1, "开机")));
         ModbusTable.register(ModbusTable.rwEnum(513, 0, 5, ModbusTable.option(0, "除湿"), ModbusTable.option(1, "加湿"), ModbusTable.option(2, "通风"), ModbusTable.option(3, "低温加湿"), ModbusTable.option(4, "制热"), ModbusTable.option(5, "制冷")));
-        ModbusTable.register(ModbusTable.rwBool(514, 0, 1, ModbusTable.option(0, "自动"), ModbusTable.option(1, "手动")));
+        ModbusTable.register(ModbusTable.rwBool(202, 0, 1, ModbusTable.option(0, "自动"), ModbusTable.option(1, "手动")));
         ModbusTable.register(ModbusTable.rwInt(5, 10, 50, "℃"));
         ModbusTable.register(ModbusTable.rwInt(6, 30, 100, "%"));
         ModbusTable.register(ModbusTable.rwInt(15, 50, 100, "%"));
@@ -114,7 +115,9 @@ final class ModbusTable {
         ModbusTable.register(ModbusTable.faultBool(807));
         ModbusTable.register(ModbusTable.faultBool(808));
         ModbusTable.register(ModbusTable.faultBool(809));
+        ModbusTable.register(ModbusTable.faultBool(810));
         ModbusTable.register(ModbusTable.faultBool(814));
+        ModbusTable.register(ModbusTable.faultBool(818));
         ModbusTable.register(ModbusTable.faultBool(822));
         ModbusTable.register(ModbusTable.faultBool(823));
         ModbusTable.register(ModbusTable.faultBool(824));
@@ -204,14 +207,9 @@ final class ModbusRegisterSpec {
     final int maxValue;
     final String unit;
     final EnumOption[] options;
-    final int readFunctionCode;
     final int writeFunctionCode;
 
     ModbusRegisterSpec(int address, Access access, Kind kind, int minValue, int maxValue, String unit, EnumOption[] options) {
-        this(address, access, kind, minValue, maxValue, unit, options, 3, 6);
-    }
-
-    ModbusRegisterSpec(int address, Access access, Kind kind, int minValue, int maxValue, String unit, EnumOption[] options, int readFunctionCode, int writeFunctionCode) {
         this.address = address;
         this.access = access;
         this.kind = kind;
@@ -219,8 +217,7 @@ final class ModbusRegisterSpec {
         this.maxValue = maxValue;
         this.unit = unit;
         this.options = options == null ? new EnumOption[]{} : options;
-        this.readFunctionCode = readFunctionCode;
-        this.writeFunctionCode = writeFunctionCode;
+        this.writeFunctionCode = 6;
     }
 
     boolean canRead() {
@@ -236,6 +233,16 @@ final class ModbusRegisterSpec {
     }
 
     int clamp(int value) {
+        // Writable scaled registers receive raw values after UI conversion.
+        // Accept those raw values without clamping them to the display range.
+        int scale = ModbusUi.displayScale(this.address);
+        if (scale > 1 && (value < this.minValue || value > this.maxValue)) {
+            long rawMin = (long) this.minValue * scale;
+            long rawMax = (long) this.maxValue * scale;
+            if (value >= rawMin && value <= rawMax) {
+                return value;
+            }
+        }
         return Math.max(this.minValue, Math.min(this.maxValue, value));
     }
 
@@ -305,7 +312,7 @@ final class ModbusUi {
             view.setTag((Object)cachedValue);
         } else {
             view.setText((CharSequence)"--");
-            view.setTag((Object)spec.minValue);
+            view.setTag((Object)ModbusUi.toRawValue(spec, spec.minValue));
         }
         ModbusManager.get(context).read(spec, new ModbusManager.IntCallback(){
 
@@ -333,7 +340,7 @@ final class ModbusUi {
         if (spec == null || !spec.canWrite()) {
             return;
         }
-        int currentValue = ModbusUi.readTagAsInt(targetView, spec.minValue);
+        int currentValue = ModbusUi.readTagAsInt(targetView, ModbusUi.toRawValue(spec, spec.minValue));
         if (spec.isEnumLike()) {
             ModbusUi.showEnumEditor(context, targetView, spec, currentValue, formatter);
             return;
@@ -345,7 +352,79 @@ final class ModbusUi {
         if (spec != null && spec.isEnumLike()) {
             return spec.labelForValue(rawValue);
         }
+        if (spec != null && (spec.address == 918 || spec.address == 919)) {
+            return String.format(Locale.CHINA, "%.1f", (double) rawValue / 10.0);
+        }
+        if (spec != null && spec.address == 158) {
+            return formatScaledDecimal(rawValue, 10);
+        }
+        if (spec != null) {
+            int scale = displayScale(spec.address);
+            if (scale > 1) {
+                return String.valueOf(Math.round((double) rawValue / scale));
+            }
+        }
         return String.valueOf(rawValue);
+    }
+
+    /** Keep raw fixed-point values in storage while displaying whole engineering units. */
+    static int displayScale(int address) {
+        switch (address) {
+            case 5:
+            case 6:
+            case 142:
+            case 158:
+            case 500:
+            case 501:
+            case 502:
+            case 503:
+            case 863:
+            case 864:
+            case 866:
+            case 900:
+            case 901:
+            case 902:
+            case 903:
+            case 920:
+            case 921:
+            case 922:
+            case 923:
+                return 10;
+            case 910:
+            case 914:
+            case 915:
+            case 506:
+            case 507:
+            case 862:
+            case 865:
+                return 100;
+            default:
+                return 1;
+        }
+    }
+
+    private static String formatScaledDecimal(int rawValue, int scale) {
+        double value = (double) rawValue / scale;
+        if (value == Math.rint(value)) {
+            return String.valueOf((long) value);
+        }
+        return String.format(Locale.CHINA, "%.1f", value);
+    }
+
+    static int toDisplayValue(ModbusRegisterSpec spec, int rawValue) {
+        if (spec == null) {
+            return rawValue;
+        }
+        int scale = displayScale(spec.address);
+        return scale > 1 ? Math.round((float) rawValue / scale) : rawValue;
+    }
+
+    static int toRawValue(ModbusRegisterSpec spec, int displayValue) {
+        if (spec == null) {
+            return displayValue;
+        }
+        int scale = displayScale(spec.address);
+        return scale > 1 ? Math.round((float) displayValue * scale) : displayValue;
     }
 
     static String formatOneDecimal(ModbusRegisterSpec spec, int rawValue) {
@@ -390,7 +469,7 @@ final class ModbusUi {
 
         EditText input = new EditText(context);
         input.setInputType(4098);
-        input.setText((CharSequence)String.valueOf(currentValue));
+        input.setText((CharSequence)String.valueOf(ModbusUi.toDisplayValue(spec, currentValue)));
         AdminUi.styleCompactNumericInput(input);
         LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(
                 AdminUi.compactNumericInputWidth(context),
@@ -418,7 +497,8 @@ final class ModbusUi {
         confirm.setOnClickListener(v -> {
             String text = input.getText() == null ? "" : input.getText().toString().trim();
             try {
-                final int value = spec.clamp(Integer.parseInt(text));
+                int displayValue = spec.clamp(Integer.parseInt(text));
+                final int value = ModbusUi.toRawValue(spec, displayValue);
                 ModbusUi.updateLocalValue(targetView, spec, formatter, value);
                 dialog.dismiss();
                 ModbusManager.get(context).write(spec, value, new ModbusManager.VoidCallback(){
@@ -429,7 +509,6 @@ final class ModbusUi {
 
                     @Override
                     public void onError(Exception error) {
-                        ModbusUi.showLocalWriteWarning(context);
                     }
                 });
             }
@@ -468,7 +547,6 @@ final class ModbusUi {
 
                     @Override
                     public void onError(Exception error) {
-                        ModbusUi.showLocalWriteWarning(context);
                     }
                 });
             });
@@ -524,10 +602,6 @@ final class ModbusUi {
         targetView.setText((CharSequence)formatter.format(spec, value));
     }
 
-    private static void showLocalWriteWarning(Context context) {
-        Toast.makeText(context, "\u4e3b\u63a7\u677f\u672a\u54cd\u5e94\uff0c\u754c\u9762\u5df2\u672c\u5730\u66f4\u65b0", Toast.LENGTH_SHORT).show();
-    }
-
     private static int readTagAsInt(TextView view, int fallback) {
         Object tag = view.getTag();
         if (tag instanceof Integer) {
@@ -552,7 +626,9 @@ final class ModbusManager {
     private static final int DEFAULT_BAUD_RATE = 9600;
     private static final int DEFAULT_SLAVE_ID = 1;
     private static final ModbusManager INSTANCE = new ModbusManager();
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ThreadPoolExecutor executor = new ThreadPoolExecutor(1, 1, 0L,
+            TimeUnit.MILLISECONDS, new PriorityBlockingQueue<Runnable>());
+    private final AtomicLong taskSequence = new AtomicLong();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Object lock = new Object();
     private final Map<Integer, Integer> localValues = new ConcurrentHashMap<Integer, Integer>();
@@ -598,9 +674,9 @@ final class ModbusManager {
             this.postError(callback, (Exception)new IOException("register is write only"));
             return;
         }
-        this.executor.execute(() -> {
+        this.executeRead(() -> {
             try {
-                int value = spec.decode(this.ensureClient().readRegister(spec.address, spec.readFunctionCode));
+                int value = spec.decode(this.ensureClient().readRegister(spec.address));
                 this.localValues.put(spec.address, value);
                 this.postSuccess(callback, value);
             }
@@ -610,7 +686,7 @@ final class ModbusManager {
                         + " baud=" + this.baudRate
                         + " slave=" + this.slaveId
                         + " address=" + spec.address
-                        + " fc=" + spec.readFunctionCode, e);
+                        + " fc=3", e);
                 this.resetClient();
                 Integer localValue = this.localValues.get(spec.address);
                 if (localValue != null) {
@@ -618,6 +694,33 @@ final class ModbusManager {
                 } else {
                     this.postError(callback, e);
                 }
+            }
+        });
+    }
+
+    void readFresh(ModbusRegisterSpec spec, IntCallback callback) {
+        if (spec == null || callback == null) {
+            return;
+        }
+        if (!spec.canRead()) {
+            this.postError(callback, (Exception)new IOException("register is write only"));
+            return;
+        }
+        this.executeRead(() -> {
+            try {
+                int value = spec.decode(this.ensureClient().readRegister(spec.address));
+                this.localValues.put(spec.address, value);
+                this.postSuccess(callback, value);
+            }
+            catch (Exception e) {
+                Log.e(TAG, "fresh read failed"
+                        + " device=" + this.devicePath
+                        + " baud=" + this.baudRate
+                        + " slave=" + this.slaveId
+                        + " address=" + spec.address
+                        + " fc=3", e);
+                this.resetClient();
+                this.postError(callback, e);
             }
         });
     }
@@ -630,7 +733,7 @@ final class ModbusManager {
             this.postError(callback, (Exception)new IOException("invalid read range"));
             return;
         }
-        this.executor.execute(() -> {
+        this.executeRead(() -> {
             try {
                 int[] rawValues = this.ensureClient().readRegisters(startAddress, count, 3);
                 int[] values = new int[rawValues.length];
@@ -667,7 +770,7 @@ final class ModbusManager {
             this.postError(callback, (Exception)new IOException("invalid coil count"));
             return;
         }
-        this.executor.execute(() -> {
+        this.executeRead(() -> {
             try {
                 int[] rawValues = this.ensureClient().readCoils(startAddress, count);
                 int[] values = new int[rawValues.length];
@@ -700,7 +803,7 @@ final class ModbusManager {
             return;
         }
         this.localValues.put(spec.address, spec.clamp(value));
-        this.executor.execute(() -> {
+        this.executeWrite(() -> {
             try {
                 int encoded = spec.encode(value);
                 this.ensureClient().writeRegister(spec.address, encoded, spec.writeFunctionCode);
@@ -721,7 +824,7 @@ final class ModbusManager {
     }
 
     void close() {
-        this.executor.execute(() -> {
+        this.executeRead(() -> {
             Object object = this.lock;
             synchronized (object) {
                 if (this.client != null) {
@@ -765,6 +868,38 @@ final class ModbusManager {
                 }
                 this.client = null;
             }
+        }
+    }
+
+    private void executeRead(Runnable task) {
+        this.executor.execute(new SerialTask(0, this.taskSequence.getAndIncrement(), task));
+    }
+
+    private void executeWrite(Runnable task) {
+        this.executor.execute(new SerialTask(1, this.taskSequence.getAndIncrement(), task));
+    }
+
+    private static final class SerialTask implements Runnable, Comparable<SerialTask> {
+        private final int priority;
+        private final long sequence;
+        private final Runnable task;
+
+        SerialTask(int priority, long sequence, Runnable task) {
+            this.priority = priority;
+            this.sequence = sequence;
+            this.task = task;
+        }
+
+        @Override
+        public void run() {
+            task.run();
+        }
+
+        @Override
+        public int compareTo(SerialTask other) {
+            int priorityComparison = Integer.compare(other.priority, priority);
+            return priorityComparison != 0
+                    ? priorityComparison : Long.compare(sequence, other.sequence);
         }
     }
 
@@ -844,11 +979,8 @@ final class ModbusRtuClient {
         this.slaveId = slaveId;
     }
 
-    synchronized int readRegister(int address, int functionCode) throws IOException {
-        if (functionCode == 1) {
-            return this.readCoils(address, 1)[0];
-        }
-        int[] values = this.readRegisters(address, 1, functionCode);
+    synchronized int readRegister(int address) throws IOException {
+        int[] values = this.readRegisters(address, 1, 3);
         return values[0];
     }
 

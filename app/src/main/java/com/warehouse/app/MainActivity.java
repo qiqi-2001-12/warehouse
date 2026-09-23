@@ -1,5 +1,6 @@
 package com.warehouse.app;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -17,6 +18,8 @@ public class MainActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemBars();
         FaultMonitor.start(getApplicationContext());
+        // Remote control is intentionally disabled for this device.
+        stopService(new Intent(this, com.warehouse.remote.RemoteAgentService.class));
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(android.R.id.content, new HomeFragment())

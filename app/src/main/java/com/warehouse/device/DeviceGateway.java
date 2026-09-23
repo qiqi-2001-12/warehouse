@@ -43,6 +43,14 @@ public final class DeviceGateway {
         return ModbusUi.formatDefault(requireSpec(address), value);
     }
 
+    public int toDisplayValue(int address, int rawValue) {
+        return ModbusUi.toDisplayValue(requireSpec(address), rawValue);
+    }
+
+    public int toRawValue(int address, int displayValue) {
+        return ModbusUi.toRawValue(requireSpec(address), displayValue);
+    }
+
     @Nullable
     public Integer getCachedValue(int address) {
         return ModbusManager.get(appContext).getCachedValue(address);
@@ -58,6 +66,28 @@ public final class DeviceGateway {
             return;
         }
         ModbusManager.get(appContext).read(spec, new ModbusManager.IntCallback() {
+            @Override
+            public void onSuccess(int value) {
+                callback.onSuccess(value);
+            }
+
+            @Override
+            public void onError(Exception error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    /**
+     * Reads directly from the controller without falling back to a cached value.
+     * Remote control uses this method so an offline controller is never reported as online.
+     */
+    public void readFresh(int address, IntCallback callback) {
+        ModbusRegisterSpec spec = findReadableSpec(address, callback);
+        if (spec == null) {
+            return;
+        }
+        ModbusManager.get(appContext).readFresh(spec, new ModbusManager.IntCallback() {
             @Override
             public void onSuccess(int value) {
                 callback.onSuccess(value);
