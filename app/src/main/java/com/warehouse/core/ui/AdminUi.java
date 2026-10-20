@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.RippleDrawable;
 import android.content.res.ColorStateList;
 import android.util.TypedValue;
@@ -79,6 +80,7 @@ public final class AdminUi {
 
     public static void styleCompactNumericInput(EditText input) {
         Context context = input.getContext();
+        input.setSoundEffectsEnabled(false);
         input.setTextColor(TEXT_PRIMARY);
         input.setHintTextColor(TEXT_SECONDARY);
         input.setTextSize(24);
@@ -135,8 +137,13 @@ public final class AdminUi {
         if (view == null) {
             return;
         }
+        Drawable mask = null;
+        Drawable background = view.getBackground();
+        if (background != null && background.getConstantState() != null) {
+            mask = background.getConstantState().newDrawable().mutate();
+        }
         view.setForeground(new RippleDrawable(
-                ColorStateList.valueOf(Color.argb(120, 36, 200, 217)), null, null));
+                ColorStateList.valueOf(Color.argb(120, 36, 200, 217)), null, mask));
     }
 
     public static void setSelected(TextView button, boolean selected) {

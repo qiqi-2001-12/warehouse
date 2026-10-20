@@ -17,6 +17,8 @@ import androidx.annotation.Nullable;
 
 import com.warehouse.R;
 import com.warehouse.device.DeviceGateway;
+import com.warehouse.data.local.OperationLogStore;
+import com.warehouse.data.local.OperationLogFormatter;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -340,28 +342,35 @@ public final class RemoteAgentService extends Service {
     }
 
     private void executeCommand(RemoteAgentHttpClient.RemoteCommand command, CommandCallback callback) {
+        CommandCallback loggedCallback = (success, errorMessage) -> {
+            if (success) {
+                OperationLogStore.get(getApplicationContext()).recordCloud(
+                        OperationLogFormatter.describeRemoteCommand(command.type, command.payload));
+            }
+            callback.onFinished(success, errorMessage);
+        };
         try {
             switch (command.type) {
                 case "SET_POWER":
-                    writeAndVerify(515, requireBoolean(command.payload, "enabled") ? 1 : 0, callback);
+                    writeAndVerify(515, requireBoolean(command.payload, "enabled") ? 1 : 0, loggedCallback);
                     return;
                 case "SET_AUTO_MODE":
-                    writeAndVerify(202, requireBoolean(command.payload, "enabled") ? 0 : 1, callback);
+                    writeAndVerify(202, requireBoolean(command.payload, "enabled") ? 0 : 1, loggedCallback);
                     return;
                 case "SET_SMART_MODE":
-                    writeAndVerify(100, requireBoolean(command.payload, "enabled") ? 1 : 0, callback);
+                    writeAndVerify(100, requireBoolean(command.payload, "enabled") ? 1 : 0, loggedCallback);
                     return;
                 case "SET_OPERATION_MODE":
-                    writeAndVerify(513, requireInt(command.payload, "mode"), callback);
+                    writeAndVerify(513, requireInt(command.payload, "mode"), loggedCallback);
                     return;
                 case "SET_SUPPLY_MODE":
-                    setManualSupplyMode(requireInt(command.payload, "mode"), callback);
+                    setManualSupplyMode(requireInt(command.payload, "mode"), loggedCallback);
                     return;
                 case "SET_PARAMETERS":
-                    setParameters(command.payload, callback);
+                    setParameters(command.payload, loggedCallback);
                     return;
                 case "SET_FACTORY_PARAMETERS":
-                    setFactoryParameters(command.payload, callback);
+                    setFactoryParameters(command.payload, loggedCallback);
                     return;
                 default:
                     callback.onFinished(false, "unsupported command type: " + command.type);

@@ -22,6 +22,7 @@ import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -36,6 +37,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.core.widget.ImageViewCompat;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -43,6 +45,8 @@ import com.warehouse.device.DeviceGateway;
 import com.warehouse.R;
 import com.warehouse.core.ui.AdminUi;
 import com.warehouse.core.ui.ScreenFit;
+import com.warehouse.data.local.OperationLogStore;
+import com.warehouse.data.local.OperationLogFormatter;
 import com.warehouse.fragment.admin.AdminContainerFragment;
 import com.warehouse.remote.OpenMeteoWeatherClient;
 
@@ -136,6 +140,12 @@ public class HomeFragment extends Fragment {
         }
         pager.setAdapter(new HomePagerAdapter(this));
         pager.setOffscreenPageLimit(2);
+        pager.setUserInputEnabled(true);
+        RecyclerView pagerRecyclerView = (RecyclerView) pager.getChildAt(0);
+        if (pagerRecyclerView != null) {
+            pagerRecyclerView.setItemAnimator(null);
+            pagerRecyclerView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        }
         pager.setCurrentItem(0, false);
     }
 
@@ -180,6 +190,94 @@ public class HomeFragment extends Fragment {
     }
 
     private void openAdminPage() {
+        if (!isAdded()) {
+            return;
+        }
+        showAdminPasswordDialog();
+    }
+
+    private void showAdminPasswordDialog() {
+        if (!isAdded()) {
+            return;
+        }
+        Context context = requireContext();
+        LinearLayout content = AdminUi.column(context);
+        content.setGravity(Gravity.CENTER_HORIZONTAL);
+        content.setPadding(AdminUi.dp(context, 18), AdminUi.dp(context, 18),
+                AdminUi.dp(context, 18), AdminUi.dp(context, 18));
+        content.setBackground(AdminUi.bg(Color.BLACK, 8, AdminUi.PANEL_STROKE, 1, context));
+
+        TextView title = AdminUi.text(context, "管理员验证", 22,
+                AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+        content.addView(title, AdminUi.lp(ViewGroup.LayoutParams.MATCH_PARENT,
+                AdminUi.dp(context, 38)));
+
+        EditText passwordInput = new EditText(context);
+        passwordInput.setSoundEffectsEnabled(false);
+        passwordInput.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        passwordInput.setSingleLine(true);
+        passwordInput.setHint("请输入密码");
+        passwordInput.setTextColor(AdminUi.TEXT_PRIMARY);
+        passwordInput.setHintTextColor(AdminUi.TEXT_SECONDARY);
+        passwordInput.setTextSize(22);
+        passwordInput.setGravity(Gravity.CENTER);
+        passwordInput.setSelectAllOnFocus(true);
+        passwordInput.setBackground(AdminUi.bg(Color.rgb(5, 35, 52), 4,
+                AdminUi.ACCENT, 1, context));
+        passwordInput.setPadding(AdminUi.dp(context, 12), 0,
+                AdminUi.dp(context, 12), 0);
+        LinearLayout.LayoutParams inputParams = AdminUi.lp(
+                ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 52));
+        inputParams.topMargin = AdminUi.dp(context, 14);
+        content.addView(passwordInput, inputParams);
+
+        LinearLayout actions = AdminUi.row(context);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams actionsParams = AdminUi.lp(
+                ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 46));
+        actionsParams.topMargin = AdminUi.dp(context, 16);
+        content.addView(actions, actionsParams);
+
+        TextView cancel = AdminUi.button(context, "取消");
+        TextView confirm = AdminUi.button(context, "确定");
+        actions.addView(cancel, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        View gap = new View(context);
+        actions.addView(gap, AdminUi.lp(AdminUi.dp(context, 10), 1));
+        actions.addView(confirm, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        AlertDialog dialog = new AlertDialog.Builder(
+                new ContextThemeWrapper(context, R.style.BlackInputDialogTheme))
+                .setView(content)
+                .create();
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        confirm.setOnClickListener(v -> {
+            String password = passwordInput.getText() == null
+                    ? "" : passwordInput.getText().toString();
+            if ("admin".equals(password)) {
+                dialog.dismiss();
+                enterAdminPage();
+                return;
+            }
+            passwordInput.setError("密码错误");
+            passwordInput.requestFocus();
+            passwordInput.selectAll();
+        });
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    context.getDrawable(R.drawable.input_dialog_black_bg));
+            int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
+            int dialogWidth = Math.min(AdminUi.dp(context, 480),
+                    Math.max(AdminUi.dp(context, 260), screenWidth - AdminUi.dp(context, 32)));
+            dialog.getWindow().setLayout(dialogWidth, ViewGroup.LayoutParams.WRAP_CONTENT);
+            dialog.getWindow().setSoftInputMode(
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        }
+        passwordInput.requestFocus();
+    }
+
+    private void enterAdminPage() {
         if (!isAdded()) {
             return;
         }
@@ -389,16 +487,6 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    public void refreshFilterLife() {
-        if (pager == null) {
-            return;
-        }
-        Fragment page = getChildFragmentManager().findFragmentByTag("f" + 1);
-        if (page instanceof SmartModePageFragment) {
-            ((SmartModePageFragment) page).triggerFilterLifeRefresh();
-        }
-    }
-
     private void showOutdoorWeather(OpenMeteoWeatherClient.CurrentWeather weather) {
         if (weatherIconView != null) {
             weatherIconView.setText(weather.getCondition().getIcon());
@@ -430,7 +518,7 @@ public class HomeFragment extends Fragment {
     }
 
     public static class IndoorStatusPageFragment extends Fragment {
-        private static final long METRIC_POLL_INTERVAL_MS = 1000L;
+        private static final long METRIC_POLL_INTERVAL_MS = 1500L;
         private static final long STATE_POLL_INTERVAL_MS = 3000L;
         private static final long STATE_POLL_START_DELAY_MS = 400L;
         private final Handler pollHandler = new Handler(Looper.getMainLooper());
@@ -485,6 +573,7 @@ public class HomeFragment extends Fragment {
             }
 
             if (switchButton != null) {
+                AdminUi.addPressFeedback(switchButton);
                 updateSwitchButton();
                 switchButton.setOnClickListener(v -> writeIntValue(515, switchOn ? 0 : 1, value -> {
                     switchOn = value == 1;
@@ -493,6 +582,7 @@ public class HomeFragment extends Fragment {
             }
 
             if (autoButton != null) {
+                AdminUi.addPressFeedback(autoButton);
                 autoButton.setText("自动");
                 autoButton.setOnClickListener(v -> {
                     boolean switchingToManual = humidityAutoMode;
@@ -987,21 +1077,22 @@ public class HomeFragment extends Fragment {
 
             leftHumidityModeButton = createBracketButton(context, "<");
             leftHumidityModeButton.setOnClickListener(v -> cycleHumidityMode(-1));
-            modeCluster.addView(leftHumidityModeButton, AdminUi.lp(AdminUi.dp(context, 30), AdminUi.dp(context, 40)));
+            modeCluster.addView(leftHumidityModeButton, AdminUi.lp(AdminUi.dp(context, 44), AdminUi.dp(context, 48)));
 
-            humidityModeValue = AdminUi.text(context, getHumidityModeText(), 22, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
+            humidityModeValue = AdminUi.text(context, getHumidityModeText(), 28, AdminUi.TEXT_PRIMARY, Typeface.BOLD);
             humidityModeValue.setGravity(Gravity.CENTER_VERTICAL);
             humidityModeValue.setClickable(true);
             humidityModeValue.setFocusable(true);
             humidityModeValue.setOnClickListener(v -> showHumidityModeDialog());
+            AdminUi.addPressFeedback(humidityModeValue);
             LinearLayout.LayoutParams humidityModeValueParams = AdminUi.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            humidityModeValueParams.leftMargin = AdminUi.dp(context, 6);
-            humidityModeValueParams.rightMargin = AdminUi.dp(context, 6);
+            humidityModeValueParams.leftMargin = AdminUi.dp(context, 10);
+            humidityModeValueParams.rightMargin = AdminUi.dp(context, 10);
             modeCluster.addView(humidityModeValue, humidityModeValueParams);
 
             rightHumidityModeButton = createBracketButton(context, ">");
             rightHumidityModeButton.setOnClickListener(v -> cycleHumidityMode(1));
-            modeCluster.addView(rightHumidityModeButton, AdminUi.lp(AdminUi.dp(context, 40), AdminUi.dp(context, 40)));
+            modeCluster.addView(rightHumidityModeButton, AdminUi.lp(AdminUi.dp(context, 44), AdminUi.dp(context, 48)));
 
             return module;
         }
@@ -1053,6 +1144,7 @@ public class HomeFragment extends Fragment {
         private TextView createModeToggleButton(Context context, String text) {
             TextView button = AdminUi.text(context, text, 17, AdminUi.PAGE_BG, Typeface.BOLD);
             button.setBackgroundResource(R.drawable.humidity_switch_on_bg);
+            AdminUi.addPressFeedback(button);
             button.setClickable(true);
             button.setFocusable(true);
             return button;
@@ -1063,6 +1155,7 @@ public class HomeFragment extends Fragment {
             button.setBackgroundResource("关闭".equals(text)
                     ? R.drawable.humidity_switch_on_bg
                     : R.drawable.humidity_switch_off_bg);
+            AdminUi.addPressFeedback(button);
             button.setTextColor("关闭".equals(text) ? AdminUi.PAGE_BG : AdminUi.ACCENT);
             button.setClickable(false);
             button.setFocusable(false);
@@ -1073,19 +1166,21 @@ public class HomeFragment extends Fragment {
             TextView button = AdminUi.text(context, text, 17, AdminUi.PAGE_BG, Typeface.BOLD);
             button.setTextColor(humidityAutoMode ? AdminUi.PAGE_BG : AdminUi.ACCENT);
             button.setBackgroundResource(humidityAutoMode ? R.drawable.humidity_switch_on_bg : R.drawable.humidity_switch_off_bg);
+            AdminUi.addPressFeedback(button);
             button.setClickable(true);
             button.setFocusable(true);
             return button;
         }
 
         private TextView createBracketButton(Context context, String text) {
-            TextView button = AdminUi.text(context, text, 26, AdminUi.ACCENT, Typeface.BOLD);
+            TextView button = AdminUi.text(context, text, 34, AdminUi.ACCENT, Typeface.BOLD);
             button.setGravity(Gravity.CENTER);
             button.setPadding(0, 0, 0, 0);
             button.setClickable(true);
             button.setFocusable(true);
-            button.setMinWidth(AdminUi.dp(context, 30));
-            button.setMinHeight(AdminUi.dp(context, 40));
+            button.setMinWidth(AdminUi.dp(context, 44));
+            button.setMinHeight(AdminUi.dp(context, 48));
+            AdminUi.addPressFeedback(button);
             return button;
         }
 
@@ -1139,6 +1234,7 @@ public class HomeFragment extends Fragment {
                             : R.drawable.humidity_switch_off_bg);
                     option.setClickable(true);
                     option.setFocusable(true);
+                    AdminUi.addPressFeedback(option);
                     LinearLayout.LayoutParams optionParams = AdminUi.weightedLp(0,
                             AdminUi.dp(context, 54), 1);
                     optionParams.leftMargin = column == 0 ? 0 : AdminUi.dp(context, 6);
@@ -1276,6 +1372,11 @@ public class HomeFragment extends Fragment {
             gateway.write(address, value, new DeviceGateway.WriteCallback() {
                 @Override
                 public void onSuccess() {
+                    Context context = getContext();
+                    if (context != null) {
+                        OperationLogStore.get(context).recordLocal(
+                                OperationLogFormatter.describeHomeControl(address, value));
+                    }
                     requestImmediateMetricPoll();
                     requestImmediateStatePoll();
                 }
@@ -1299,7 +1400,7 @@ public class HomeFragment extends Fragment {
     }
 
     public static class SmartModePageFragment extends Fragment {
-        private static final long POLL_INTERVAL_MS = 1000L;
+        private static final long POLL_INTERVAL_MS = 1500L;
         private static final String STATE_TEMPERATURE_SETTING = "temperature_setting";
         private static final String STATE_HUMIDITY_SETTING = "humidity_setting";
         private static final String STATE_SUPPLY_SETTING = "supply_setting";
@@ -1396,24 +1497,6 @@ public class HomeFragment extends Fragment {
             outState.putInt(STATE_TEMPERATURE_SETTING, temperatureSetting);
             outState.putInt(STATE_HUMIDITY_SETTING, humiditySetting);
             outState.putInt(STATE_SUPPLY_SETTING, supplySetting);
-        }
-
-        public void triggerFilterLifeRefresh() {
-            if (!isAdded() || !hasReadableFilterLife()) {
-                return;
-            }
-            DeviceGateway.get(requireContext()).read(538, new DeviceGateway.IntCallback() {
-                @Override
-                public void onSuccess(int value) {
-                    if (isAdded()) {
-                        updateFilterLife(value);
-                    }
-                }
-
-                @Override
-                public void onError(Exception error) {
-                }
-            });
         }
 
         private void startPolling() {
@@ -1838,6 +1921,7 @@ public class HomeFragment extends Fragment {
                             refreshSummaryValues();
                         });
                     }));
+            AdminUi.addPressFeedback(temperatureItem.container);
             row.addView(temperatureItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
             View divider1 = new View(context);
@@ -1857,6 +1941,7 @@ public class HomeFragment extends Fragment {
                             refreshSummaryValues();
                         });
                     }));
+            AdminUi.addPressFeedback(humidityItem.container);
             row.addView(humidityItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
             View divider2 = new View(context);
@@ -1876,6 +1961,7 @@ public class HomeFragment extends Fragment {
                             refreshSummaryValues();
                         });
                     }));
+            AdminUi.addPressFeedback(supplyItem.container);
             row.addView(supplyItem.container, AdminUi.weightedLp(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
             return module;
         }
@@ -1944,6 +2030,12 @@ public class HomeFragment extends Fragment {
             gateway.write(address, value, new DeviceGateway.WriteCallback() {
                 @Override
                 public void onSuccess() {
+                    Context context = getContext();
+                    if (context != null) {
+                        OperationLogStore.get(context).recordLocal(
+                                OperationLogFormatter.describeSetting(address,
+                                        DeviceGateway.get(context).toDisplayValue(address, value)));
+                    }
                     requestImmediatePoll();
                 }
 
@@ -1988,6 +2080,11 @@ public class HomeFragment extends Fragment {
             });
             dialogParts.dialog.show();
             styleCompactDialog(dialogParts.dialog);
+            input.requestFocus();
+            if (dialogParts.dialog.getWindow() != null) {
+                dialogParts.dialog.getWindow().setSoftInputMode(
+                        WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            }
         }
 
         private void showIntegerInputDialog(String title, int currentValue, int minValue, int maxValue, IntValueConsumer onValueConfirmed) {
@@ -2021,6 +2118,11 @@ public class HomeFragment extends Fragment {
             });
             dialogParts.dialog.show();
             styleCompactDialog(dialogParts.dialog);
+            input.requestFocus();
+            if (dialogParts.dialog.getWindow() != null) {
+                dialogParts.dialog.getWindow().setSoftInputMode(
+                        WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            }
         }
 
         private InputDialogParts buildInputDialog(Context context, String title, String range, EditText input) {
@@ -2097,6 +2199,7 @@ public class HomeFragment extends Fragment {
             button.setBackground(AdminUi.bg(backgroundColor, 4, AdminUi.PANEL_STROKE, 1, context));
             button.setClickable(true);
             button.setFocusable(true);
+            AdminUi.addPressFeedback(button);
             return button;
         }
 

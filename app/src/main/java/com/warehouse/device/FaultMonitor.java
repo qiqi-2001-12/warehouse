@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 public final class FaultMonitor {
-    private static final long POLL_INTERVAL_MS = 2000L;
+    private static final long POLL_INTERVAL_MS = 3000L;
     private static final long FAULT_RESET_SUPPRESSION_MS = 5 * 60 * 1000L;
     private static final int MAX_LOG_ENTRIES = 200;
     private static final String PREFERENCES_NAME = "fault_monitor";

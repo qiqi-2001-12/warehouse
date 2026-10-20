@@ -20,9 +20,11 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.warehouse.device.DeviceGateway;
 import com.warehouse.R;
 import com.warehouse.core.ui.AdminUi;
+import com.warehouse.data.local.OperationLogStore;
+import com.warehouse.data.local.OperationLogFormatter;
 
 public class FactoryParamsFragment extends Fragment {
-    private static final long POLL_INTERVAL_MS = 1000L;
+    private static final long POLL_INTERVAL_MS = 1500L;
     private static final int[] PAGE_LAYOUTS = new int[]{
             R.layout.params_1,
             R.layout.params_2,
@@ -71,7 +73,13 @@ public class FactoryParamsFragment extends Fragment {
         pager.setBackgroundResource(R.drawable.factory_params_panel_bg);
         pager.setOffscreenPageLimit(1);
         pager.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        pager.setUserInputEnabled(true);
         pager.setAdapter(new FactoryParamsPagerAdapter());
+        RecyclerView pagerRecyclerView = (RecyclerView) pager.getChildAt(0);
+        if (pagerRecyclerView != null) {
+            pagerRecyclerView.setItemAnimator(null);
+            pagerRecyclerView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        }
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
@@ -139,6 +147,8 @@ public class FactoryParamsFragment extends Fragment {
         gateway.write(address, 1, new DeviceGateway.WriteCallback() {
             @Override
             public void onSuccess() {
+                OperationLogStore.get(requireContext()).recordLocal(
+                        address == 566 ? "确认厂家参数" : "执行厂家参数操作");
                 Toast.makeText(requireContext(), "\u5df2\u53d1\u9001", Toast.LENGTH_SHORT).show();
             }
 
@@ -458,6 +468,7 @@ public class FactoryParamsFragment extends Fragment {
         int initialValue = cachedValue == null ? gateway.minValue(159) : cachedValue;
         button.setTag(initialValue);
         button.setText(gateway.formatDefault(159, initialValue));
+        AdminUi.addPressFeedback(button);
         button.setOnClickListener(v -> {
             Object tag = button.getTag();
             int currentValue = tag instanceof Integer ? (Integer) tag : gateway.maxValue(159);
@@ -471,6 +482,9 @@ public class FactoryParamsFragment extends Fragment {
                     button.setTag(nextValue);
                     button.setText(gateway.formatDefault(159, nextValue));
                     button.setEnabled(true);
+                    OperationLogStore.get(button.getContext()).recordLocal(
+                            OperationLogFormatter.describeParameter(159,
+                                    gateway.formatDefault(159, nextValue)));
                 }
 
                 @Override
@@ -519,6 +533,7 @@ public class FactoryParamsFragment extends Fragment {
         if (gateway.canWrite(address)) {
             view.setClickable(true);
             view.setFocusable(true);
+            AdminUi.addPressFeedback(view);
             view.setOnClickListener(v -> gateway.showEditor(view, address));
         }
     }

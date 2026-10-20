@@ -53,32 +53,47 @@
                 android:orientation="horizontal">
 
                 <TextView
-                android:id="@+id/tab_fault"
-                android:layout_width="140dp"
-                android:layout_height="56dp"
+                    android:id="@+id/tab_factory"
+                    android:layout_width="108dp"
+                    android:layout_height="56dp"
                     android:background="@drawable/admin_button_bg"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="故障"
+                    android:text="&#x5382;&#x5BB6;&#x53C2;&#x6570;"
                     android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                    android:textSize="17sp"
                     android:textStyle="bold" />
 
                 <TextView
-                android:id="@+id/tab_factory"
-                android:layout_width="140dp"
-                android:layout_height="56dp"
+                    android:id="@+id/tab_fault"
+                    android:layout_width="108dp"
+                    android:layout_height="56dp"
                     android:layout_marginStart="10dp"
                     android:background="@drawable/admin_button_bg"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="厂家参数"
+                    android:text="&#x6545;&#x969C;"
                     android:textColor="#E0F6F8"
-                android:textSize="17sp"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tab_operation"
+                    android:layout_width="108dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/admin_button_bg"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:text="&#x64CD;&#x4F5C;&#x65E5;&#x5FD7;"
+                    android:textColor="#E0F6F8"
+                    android:textSize="17sp"
                     android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>

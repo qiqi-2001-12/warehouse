@@ -22,6 +22,7 @@ import com.warehouse.device.DeviceGateway;
 import com.warehouse.device.FaultMonitor;
 import com.warehouse.R;
 import com.warehouse.core.ui.AdminUi;
+import com.warehouse.data.local.OperationLogStore;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -173,9 +174,8 @@ public class FaultFragment extends Fragment {
                 if (address == 799) {
                     FaultMonitor.get(requireContext()).clearFaultsForFiveMinutes();
                 }
-                if (isAdded()) {
-                    Toast.makeText(appContext, "\u5df2\u53d1\u9001", Toast.LENGTH_SHORT).show();
-                }
+                OperationLogStore.get(appContext).recordLocal(
+                        address == 799 ? "故障复位" : "滤网复位");
             }
 
             @Override

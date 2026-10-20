@@ -34,6 +34,7 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import com.warehouse.R;
 import com.warehouse.core.ui.AdminUi;
 import com.warehouse.core.ui.ScreenFit;
+import com.warehouse.data.local.OperationLogStore;
 import com.warehouse.device.DeviceGateway;
 
 import java.util.EnumMap;
@@ -114,6 +115,7 @@ public class WifiSetupFragment extends Fragment {
                 AdminUi.dp(context, 44), AdminUi.dp(context, 28));
 
         deviceCodeInput = new EditText(context);
+        deviceCodeInput.setSoundEffectsEnabled(false);
         deviceCodeInput.setHint("\u8bf7\u8f93\u5165\u8bbe\u5907\u7801");
         deviceCodeInput.setTextColor(AdminUi.TEXT_PRIMARY);
         deviceCodeInput.setHintTextColor(AdminUi.TEXT_SECONDARY);
@@ -158,6 +160,7 @@ public class WifiSetupFragment extends Fragment {
         resetBackground.addState(new int[]{},
                 AdminUi.bg(AdminUi.CONTROL_BG, 6, AdminUi.CONTROL_STROKE, 1, context));
         resetFactory.setBackground(resetBackground);
+        AdminUi.addPressFeedback(resetFactory);
         resetFactory.setOnClickListener(v -> writeFactoryReset(resetFactory));
         content.addView(resetFactory, AdminUi.lp(AdminUi.dp(context, 180), AdminUi.dp(context, 56)));
 
@@ -180,6 +183,7 @@ public class WifiSetupFragment extends Fragment {
             public void onSuccess() {
                 Context callbackContext = getContext();
                 if (callbackContext != null && isAdded()) {
+                    OperationLogStore.get(callbackContext).recordLocal("恢复出厂设置");
                     Toast.makeText(callbackContext, "\u5df2\u53d1\u9001", Toast.LENGTH_SHORT).show();
                     button.setEnabled(true);
                 }

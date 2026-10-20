@@ -15,11 +15,13 @@ import com.warehouse.core.ui.AdminUi;
 import com.warehouse.core.ui.ScreenFit;
 import com.warehouse.fragment.factory.FactoryParamsFragment;
 import com.warehouse.fragment.fault.FaultFragment;
+import com.warehouse.fragment.operation.OperationLogFragment;
 
 public class AdminContainerFragment extends Fragment {
     private int contentId;
     private TextView faultTab;
     private TextView factoryTab;
+    private TextView operationTab;
 
     @Nullable
     @Override
@@ -28,6 +30,7 @@ public class AdminContainerFragment extends Fragment {
         View backTouchTarget = root.findViewById(R.id.btn_back_touch_target);
         faultTab = root.findViewById(R.id.tab_fault);
         factoryTab = root.findViewById(R.id.tab_factory);
+        operationTab = root.findViewById(R.id.tab_operation);
         contentId = R.id.admin_content;
 
         ScreenFit.bind(root, root.findViewById(R.id.admin_shell));
@@ -36,8 +39,10 @@ public class AdminContainerFragment extends Fragment {
         backTouchTarget.setOnClickListener(v -> getParentFragmentManager().popBackStack());
         AdminUi.addPressFeedback(faultTab);
         AdminUi.addPressFeedback(factoryTab);
+        AdminUi.addPressFeedback(operationTab);
         faultTab.setOnClickListener(v -> showPage(new FaultFragment(), faultTab));
         factoryTab.setOnClickListener(v -> showPage(new FactoryParamsFragment(), factoryTab));
+        operationTab.setOnClickListener(v -> showPage(new OperationLogFragment(), operationTab));
         showPage(new FactoryParamsFragment(), factoryTab);
         return root;
     }
@@ -48,6 +53,7 @@ public class AdminContainerFragment extends Fragment {
         }
         AdminUi.setSelected(faultTab, selectedTab == faultTab);
         AdminUi.setSelected(factoryTab, selectedTab == factoryTab);
+        AdminUi.setSelected(operationTab, selectedTab == operationTab);
         getChildFragmentManager()
                 .beginTransaction()
                 .replace(contentId, fragment)

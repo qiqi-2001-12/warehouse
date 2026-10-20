@@ -15,6 +15,7 @@ import android.view.Gravity;
 import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -24,6 +25,8 @@ import androidx.appcompat.app.AlertDialog;
 
 import com.warehouse.R;
 import com.warehouse.core.ui.AdminUi;
+import com.warehouse.data.local.OperationLogStore;
+import com.warehouse.data.local.OperationLogFormatter;
 import java.io.File;
 import java.io.Closeable;
 import java.io.ByteArrayOutputStream;
@@ -505,6 +508,8 @@ final class ModbusUi {
 
                     @Override
                     public void onSuccess() {
+                        OperationLogStore.get(context).recordLocal(
+                                OperationLogFormatter.describeParameter(spec.address, displayValue));
                     }
 
                     @Override
@@ -518,6 +523,10 @@ final class ModbusUi {
         });
         dialog.setOnShowListener(d -> ModbusUi.styleEditorDialog(dialog, context));
         dialog.show();
+        input.requestFocus();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        }
     }
 
     private static void showEnumEditor(final Context context, final TextView targetView, final ModbusRegisterSpec spec, int currentValue, final ValueFormatter formatter) {
@@ -543,6 +552,8 @@ final class ModbusUi {
 
                     @Override
                     public void onSuccess() {
+                        OperationLogStore.get(context).recordLocal(
+                                OperationLogFormatter.describeParameter(spec.address, spec.options[selected[0]].label));
                     }
 
                     @Override
@@ -591,6 +602,7 @@ final class ModbusUi {
         button.setBackground(AdminUi.bg(backgroundColor, 4, AdminUi.PANEL_STROKE, 1, context));
         button.setClickable(true);
         button.setFocusable(true);
+        AdminUi.addPressFeedback(button);
         return button;
     }
 
@@ -1179,7 +1191,9 @@ final class ModbusRtuClient {
 final class ModbusSerialTransport
 implements ModbusTransport {
     private static final String TAG = "ModbusSerialTransport";
-    private static final boolean DEBUG_FRAMES = true;
+    // Per-byte frame logging is useful during transport bring-up, but it adds
+    // considerable device I/O while the controller is being polled normally.
+    private static final boolean DEBUG_FRAMES = false;
     private static final int READ_TIMEOUT_MS = 1500;
     private static final int WRITE_TIMEOUT_MS = 1000;
     private static final int BITS_PER_CHAR = 10;
