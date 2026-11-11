@@ -14,7 +14,7 @@ Place new code by responsibility:
 - `com.warehouse.fragment.<feature>`: Fragment screens and UI code for one feature.
 - `com.warehouse.device`: device-facing abstractions, repositories, and Modbus integration.
 - `com.warehouse.remote`: server APIs, WebSocket clients, remote commands, and synchronization.
-- `com.warehouse.update`: remote upgrade download, verification, and installation workflows.
+- `com.warehouse.ota`: remote upgrade download, verification, and installation workflows.
 - `com.warehouse.data.local`: preferences, local persistence, and caches.
 - `com.warehouse.domain`: feature-independent models and use cases.
 

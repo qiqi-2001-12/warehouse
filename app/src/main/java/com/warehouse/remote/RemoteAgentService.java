@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -19,6 +20,7 @@ import com.warehouse.R;
 import com.warehouse.device.DeviceGateway;
 import com.warehouse.data.local.OperationLogStore;
 import com.warehouse.data.local.OperationLogFormatter;
+import com.warehouse.ota.AppUpdateManager;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -42,6 +44,7 @@ public final class RemoteAgentService extends Service {
     private static final String CHANNEL_ID = "remote_agent";
     private static final int NOTIFICATION_ID = 7_301;
     private static final long POLL_INTERVAL_MS = 5_000L;
+    private static final long STALLED_CYCLE_TIMEOUT_MS = 20_000L;
     private static final long TELEMETRY_COLLECTION_TIMEOUT_MS = 10_000L;
     private static final String PREFERENCES_NAME = "remote_agent";
     private static final String ACK_IDS_KEY = "pending_ack_ids";
@@ -74,6 +77,7 @@ public final class RemoteAgentService extends Service {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();
     private boolean cycleInFlight;
+    private long cycleStartedAtMs;
     private RemoteAgentHttpClient httpClient;
     private SharedPreferences preferences;
 
@@ -98,7 +102,18 @@ public final class RemoteAgentService extends Service {
     @Override
     public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         startForeground(NOTIFICATION_ID, buildNotification());
-        scheduleNextCycle(0L);
+        long cycleAge = cycleInFlight ? SystemClock.elapsedRealtime() - cycleStartedAtMs : Long.MAX_VALUE;
+        if (!cycleInFlight || cycleAge > STALLED_CYCLE_TIMEOUT_MS) {
+            // The activity can bring the service back to the foreground after
+            // a controller read was interrupted. Reset only a genuinely stale
+            // cycle so normal starts do not create duplicate loops.
+            cycleInFlight = false;
+            cycleStartedAtMs = 0L;
+            Log.i(TAG, "remote agent loop started");
+            scheduleNextCycle(0L);
+        } else {
+            Log.i(TAG, "remote agent loop already running");
+        }
         return START_STICKY;
     }
 
@@ -125,7 +140,22 @@ public final class RemoteAgentService extends Service {
             return;
         }
         cycleInFlight = true;
-        flushPendingAcknowledgements(this::collectAndSendTelemetry);
+        cycleStartedAtMs = SystemClock.elapsedRealtime();
+        sendPresenceHeartbeat(() -> flushPendingAcknowledgements(this::collectAndSendTelemetry));
+    }
+
+    private void sendPresenceHeartbeat(Runnable onComplete) {
+        networkExecutor.execute(() -> {
+            try {
+                // Mark the agent online immediately. The full telemetry
+                // heartbeat follows after controller reads complete.
+                httpClient.sendHeartbeat(new JSONObject());
+                Log.i(TAG, "presence heartbeat sent");
+            } catch (IOException error) {
+                Log.w(TAG, "presence heartbeat failed", error);
+            }
+            mainHandler.post(onComplete);
+        });
     }
 
     private void collectAndSendTelemetry() {
@@ -206,8 +236,8 @@ public final class RemoteAgentService extends Service {
             boolean automatic = autoMode != null && autoMode == 0;
             telemetry.put("controllerReachable", !values.isEmpty());
             telemetry.put("collectedAt", System.currentTimeMillis());
-            putIfPresent(telemetry, "temperature", firstPresent(values, 863, 500));
-            putIfPresent(telemetry, "humidity", firstPresent(values, 864, 501));
+            putScaledIfPresent(telemetry, "temperature", firstPresent(values, 863, 500), 863);
+            putScaledIfPresent(telemetry, "humidity", firstPresent(values, 864, 501), 864);
             if (values.containsKey(515)) {
                 telemetry.put("power", values.get(515) == 1);
             }
@@ -225,8 +255,8 @@ public final class RemoteAgentService extends Service {
             putIfPresent(telemetry, "supplyMode", supplyMode);
             putIfPresent(telemetry, "manualSupplyMode", values.get(141));
             putIfPresent(telemetry, "automaticSupplyMode", values.get(996));
-            putIfPresent(telemetry, "temperatureSetting", values.get(5));
-            putIfPresent(telemetry, "humiditySetting", values.get(6));
+            putScaledIfPresent(telemetry, "temperatureSetting", values.get(5), 5);
+            putScaledIfPresent(telemetry, "humiditySetting", values.get(6), 6);
             putIfPresent(telemetry, "supplyVolume", values.get(15));
             telemetry.put("indoor", buildIndoorMetrics(values));
             telemetry.put("airStreams", buildAirStreamMetrics(values));
@@ -234,6 +264,7 @@ public final class RemoteAgentService extends Service {
             telemetry.put("factoryParameters", buildFactoryParameters(values));
             telemetry.put("diagnostics", buildDiagnostics(values));
             telemetry.put("faults", buildFaults(values));
+            telemetry.put("app", AppUpdateManager.get(getApplicationContext()).telemetry());
             if (!failures.isEmpty()) {
                 telemetry.put(values.isEmpty() ? "controllerReadError" : "telemetryWarning", failures.get(0));
             }
@@ -247,22 +278,22 @@ public final class RemoteAgentService extends Service {
         JSONObject result = new JSONObject();
         putIfPresent(result, "pm25", values.get(860));
         putIfPresent(result, "co2", values.get(861));
-        putIfPresent(result, "sensorStatus", values.get(862));
-        putIfPresent(result, "temperature", values.get(863));
-        putIfPresent(result, "humidity", values.get(864));
-        putIfPresent(result, "absoluteHumidity", values.get(865));
-        putIfPresent(result, "outdoorTemperature", values.get(866));
+        putScaledIfPresent(result, "sensorStatus", values.get(862), 862);
+        putScaledIfPresent(result, "temperature", values.get(863), 863);
+        putScaledIfPresent(result, "humidity", values.get(864), 864);
+        putScaledIfPresent(result, "absoluteHumidity", values.get(865), 865);
+        putScaledIfPresent(result, "outdoorTemperature", values.get(866), 866);
         return result;
     }
 
     private static JSONObject buildAirStreamMetrics(Map<Integer, Integer> values) throws JSONException {
         JSONObject result = new JSONObject();
-        putIfPresent(result, "freshAirTemperature", values.get(500));
-        putIfPresent(result, "freshAirHumidity", values.get(501));
-        putIfPresent(result, "supplyAirTemperature", values.get(502));
-        putIfPresent(result, "supplyAirHumidity", values.get(503));
-        putIfPresent(result, "freshAirAbsoluteHumidity", values.get(506));
-        putIfPresent(result, "supplyAirAbsoluteHumidity", values.get(507));
+        putScaledIfPresent(result, "freshAirTemperature", values.get(500), 500);
+        putScaledIfPresent(result, "freshAirHumidity", values.get(501), 501);
+        putScaledIfPresent(result, "supplyAirTemperature", values.get(502), 502);
+        putScaledIfPresent(result, "supplyAirHumidity", values.get(503), 503);
+        putScaledIfPresent(result, "freshAirAbsoluteHumidity", values.get(506), 506);
+        putScaledIfPresent(result, "supplyAirAbsoluteHumidity", values.get(507), 507);
         return result;
     }
 
@@ -281,26 +312,26 @@ public final class RemoteAgentService extends Service {
     private static JSONObject buildFactoryParameters(Map<Integer, Integer> values) throws JSONException {
         JSONObject result = new JSONObject();
         for (Map.Entry<String, Integer> entry : FACTORY_PARAMETER_ADDRESSES.entrySet()) {
-            putIfPresent(result, entry.getKey(), values.get(entry.getValue()));
+            putScaledIfPresent(result, entry.getKey(), values.get(entry.getValue()), entry.getValue());
         }
         return result;
     }
 
     private static JSONObject buildDiagnostics(Map<Integer, Integer> values) throws JSONException {
         JSONObject result = new JSONObject();
-        putIfPresent(result, "exhaustTemperature", values.get(900));
-        putIfPresent(result, "outdoorCoilTemperature", values.get(901));
-        putIfPresent(result, "environmentTemperature", values.get(902));
-        putIfPresent(result, "suctionTemperature", values.get(903));
-        putIfPresent(result, "compressorCurrent", values.get(910));
-        putIfPresent(result, "compressorSpeed", values.get(914));
-        putIfPresent(result, "compressorRpm", values.get(915));
-        putIfPresent(result, "lowPressure", values.get(918));
-        putIfPresent(result, "highPressure", values.get(919));
-        putIfPresent(result, "evaporationTemperature", values.get(920));
-        putIfPresent(result, "condensingTemperature", values.get(921));
-        putIfPresent(result, "suctionSuperheat", values.get(922));
-        putIfPresent(result, "exhaustSuperheat", values.get(923));
+        putScaledIfPresent(result, "exhaustTemperature", values.get(900), 900);
+        putScaledIfPresent(result, "outdoorCoilTemperature", values.get(901), 901);
+        putScaledIfPresent(result, "environmentTemperature", values.get(902), 902);
+        putScaledIfPresent(result, "suctionTemperature", values.get(903), 903);
+        putScaledIfPresent(result, "compressorCurrent", values.get(910), 910);
+        putScaledIfPresent(result, "compressorSpeed", values.get(914), 914);
+        putScaledIfPresent(result, "compressorRpm", values.get(915), 915);
+        putScaledIfPresent(result, "lowPressure", values.get(918), 918);
+        putScaledIfPresent(result, "highPressure", values.get(919), 919);
+        putScaledIfPresent(result, "evaporationTemperature", values.get(920), 920);
+        putScaledIfPresent(result, "condensingTemperature", values.get(921), 921);
+        putScaledIfPresent(result, "suctionSuperheat", values.get(922), 922);
+        putScaledIfPresent(result, "exhaustSuperheat", values.get(923), 923);
         return result;
     }
 
@@ -372,12 +403,22 @@ public final class RemoteAgentService extends Service {
                 case "SET_FACTORY_PARAMETERS":
                     setFactoryParameters(command.payload, loggedCallback);
                     return;
+                case "REQUEST_APP_UPDATE":
+                    startAppUpdate(command.payload, loggedCallback);
+                    return;
                 default:
                     callback.onFinished(false, "unsupported command type: " + command.type);
             }
         } catch (IllegalArgumentException error) {
             callback.onFinished(false, error.getMessage());
         }
+    }
+
+    private void startAppUpdate(JSONObject payload, CommandCallback callback) {
+        AppUpdateManager.get(getApplicationContext()).startUpdate(
+                payload,
+                getString(R.string.remote_agent_device_key),
+                callback::onFinished);
     }
 
     private void setManualSupplyMode(int mode, CommandCallback callback) {
@@ -405,10 +446,10 @@ public final class RemoteAgentService extends Service {
     private void setParameters(JSONObject payload, CommandCallback callback) {
         List<RegisterWrite> writes = new ArrayList<>();
         if (payload.has("temperature")) {
-            writes.add(new RegisterWrite(5, requireInt(payload, "temperature")));
+            writes.add(new RegisterWrite(5, toRawCommandValue(5, requireInt(payload, "temperature"))));
         }
         if (payload.has("humidity")) {
-            writes.add(new RegisterWrite(6, requireInt(payload, "humidity")));
+            writes.add(new RegisterWrite(6, toRawCommandValue(6, requireInt(payload, "humidity"))));
         }
         if (payload.has("supplyVolume")) {
             writes.add(new RegisterWrite(15, requireInt(payload, "supplyVolume")));
@@ -429,7 +470,8 @@ public final class RemoteAgentService extends Service {
         List<RegisterWrite> writes = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : FACTORY_PARAMETER_ADDRESSES.entrySet()) {
             if (values.has(entry.getKey())) {
-                writes.add(new RegisterWrite(entry.getValue(), requireInt(values, entry.getKey())));
+                int address = entry.getValue();
+                writes.add(new RegisterWrite(address, toRawCommandValue(address, requireInt(values, entry.getKey()))));
             }
         }
         if (writes.isEmpty()) {
@@ -463,7 +505,7 @@ public final class RemoteAgentService extends Service {
             callback.onFinished(false, "register is not readable and writable: " + address);
             return;
         }
-        if (requestedValue < gateway.minValue(address) || requestedValue > gateway.maxValue(address)) {
+        if (gateway.clamp(address, requestedValue) != requestedValue) {
             callback.onFinished(false, "value out of range for register " + address);
             return;
         }
@@ -589,12 +631,13 @@ public final class RemoteAgentService extends Service {
 
     private void finishCycle() {
         cycleInFlight = false;
+        cycleStartedAtMs = 0L;
         scheduleNextCycle(POLL_INTERVAL_MS);
     }
 
     private Notification buildNotification() {
         return new Notification.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_launcher)
+                .setSmallIcon(R.drawable.notification_icon)
                 .setContentTitle(getString(R.string.remote_agent_notification_title))
                 .setContentText(getString(R.string.remote_agent_notification_text))
                 .setOngoing(true)
@@ -645,6 +688,68 @@ public final class RemoteAgentService extends Service {
         if (value != null) {
             target.put(name, value);
         }
+    }
+
+    private static void putScaledIfPresent(JSONObject target, String name, Integer rawValue, int address)
+            throws JSONException {
+        if (rawValue == null) {
+            return;
+        }
+        target.put(name, displayValue(address, rawValue));
+    }
+
+    private static Number displayValue(int address, int rawValue) {
+        int scale = telemetryScale(address);
+        if (scale == 1) {
+            return rawValue;
+        }
+        double value = (double) rawValue / scale;
+        return value == Math.rint(value) ? (long) value : value;
+    }
+
+    private static int telemetryScale(int address) {
+        switch (address) {
+            case 5:
+            case 6:
+            case 142:
+            case 158:
+            case 500:
+            case 501:
+            case 502:
+            case 503:
+            case 863:
+            case 864:
+            case 866:
+            case 900:
+            case 901:
+            case 902:
+            case 903:
+            case 918:
+            case 919:
+            case 920:
+            case 921:
+            case 922:
+            case 923:
+                return 10;
+            case 506:
+            case 507:
+            case 862:
+            case 865:
+            case 910:
+            case 914:
+            case 915:
+                return 100;
+            default:
+                return 1;
+        }
+    }
+
+    private int toRawCommandValue(int address, int displayValue) {
+        DeviceGateway gateway = DeviceGateway.get(getApplicationContext());
+        if (displayValue < gateway.minValue(address) || displayValue > gateway.maxValue(address)) {
+            throw new IllegalArgumentException("value out of range for register " + address);
+        }
+        return gateway.toRawValue(address, displayValue);
     }
 
     private static void putBooleanIfPresent(JSONObject target, String name, Integer value) throws JSONException {

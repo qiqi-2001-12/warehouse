@@ -25,6 +25,10 @@ public final class OperationLogFormatter {
     }
 
     public static String describeRemoteCommand(String type, org.json.JSONObject payload) {
+        if ("REQUEST_APP_UPDATE".equals(type)) {
+            String version = payload == null ? "" : payload.optString("versionName", "");
+            return version.isEmpty() ? "远程升级：开始升级" : "远程升级：升级到版本 " + version;
+        }
         if ("SET_POWER".equals(type)) {
             return describe(515, payload != null && payload.optBoolean("enabled", false) ? 1 : 0);
         }

@@ -18,7 +18,7 @@ If a command acknowledgement cannot reach the server, it is persisted in Android
 
 The development values are in `app/src/main/res/values/strings.xml`:
 
-- `remote_agent_base_url`: currently `http://192.168.60.111:8080`
+- `remote_agent_base_url`: currently `http://100.119.100.28:8080`
 - `remote_agent_device_key`: must match the server `WAREHOUSE_DEVICE_KEY`
 - `remote_agent_serial_no`: currently `WH-001`
 - `remote_agent_device_name`: label shown in the browser console
@@ -38,6 +38,6 @@ The development values are in `app/src/main/res/values/strings.xml`:
 
 1. Start the platform at `D:\warehouse-control-platform` with `./gradlew.bat bootRun`.
 2. Confirm the Android device and computer are on the same LAN, then install this APK.
-3. Open `http://192.168.60.111:8080`, log in, and check that `WH-001` becomes `ONLINE`.
+3. Open `http://100.119.100.28:8080`, log in, and check that `WH-001` becomes `ONLINE`.
 4. Queue a power or manual-mode command from the browser. The command should transition from `PENDING` to `DELIVERED`, then `SUCCESS` or `FAILED` only after controller readback.
 5. Use `adb logcat -s RemoteAgent ModbusManager` to diagnose any connection, command, or controller-read failure.

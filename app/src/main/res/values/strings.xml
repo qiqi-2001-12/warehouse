@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WareHouse</string>
-    <string name="remote_agent_base_url" translatable="false">http://192.168.60.111:8080</string>
+    <string name="app_name">生态之家</string>
+    <string name="remote_agent_base_url" translatable="false">http://100.119.100.28:8080</string>
     <string name="remote_agent_device_key" translatable="false">change-device-key-before-production</string>
     <string name="remote_agent_serial_no" translatable="false">WH-001</string>
     <string name="remote_agent_device_name" translatable="false">全效舱环境一体机</string>

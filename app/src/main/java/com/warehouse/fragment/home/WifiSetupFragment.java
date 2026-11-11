@@ -23,6 +23,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.widget.ImageViewCompat;
 import androidx.fragment.app.Fragment;
 
@@ -161,10 +162,40 @@ public class WifiSetupFragment extends Fragment {
                 AdminUi.bg(AdminUi.CONTROL_BG, 6, AdminUi.CONTROL_STROKE, 1, context));
         resetFactory.setBackground(resetBackground);
         AdminUi.addPressFeedback(resetFactory);
-        resetFactory.setOnClickListener(v -> writeFactoryReset(resetFactory));
+        resetFactory.setOnClickListener(v -> confirmFactoryReset(context, resetFactory));
         content.addView(resetFactory, AdminUi.lp(AdminUi.dp(context, 180), AdminUi.dp(context, 56)));
 
+        TextView versionView = new TextView(context);
+        String versionName = "未知";
+        try {
+            String packageVersion = context.getPackageManager()
+                    .getPackageInfo(context.getPackageName(), 0).versionName;
+            if (packageVersion != null && !packageVersion.trim().isEmpty()) {
+                versionName = packageVersion;
+            }
+        } catch (android.content.pm.PackageManager.NameNotFoundException ignored) {
+            // Keep the fallback label when package metadata is unavailable.
+        }
+        versionView.setText("程序版本 v" + versionName);
+        versionView.setTextColor(AdminUi.TEXT_SECONDARY);
+        versionView.setTextSize(13);
+        versionView.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        versionView.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams versionParams = AdminUi.lp(
+                ViewGroup.LayoutParams.MATCH_PARENT, AdminUi.dp(context, 24));
+        versionParams.topMargin = AdminUi.dp(context, 6);
+        content.addView(versionView, versionParams);
+
         return content;
+    }
+
+    private void confirmFactoryReset(Context context, TextView button) {
+        new AlertDialog.Builder(context)
+                .setTitle("确认恢复出厂设置")
+                .setMessage("设备参数将恢复为出厂设置，确定继续吗？")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("确定", (dialog, which) -> writeFactoryReset(button))
+                .show();
     }
 
     private void writeFactoryReset(TextView button) {
